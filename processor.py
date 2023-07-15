@@ -64,10 +64,10 @@ def process_polygon(polygon: Polygon) -> float:
     save_image(orto_img, '2')
 
     # median filter
-    orto_img = filters.median(orto_img, morphology.square(7))
-    save_image(orto_img, '3')
+    orto_img_blur = filters.median(orto_img, morphology.square(7))
+    save_image(orto_img_blur, '3')
 
-    edges = feature.canny(orto_img)
+    edges = feature.canny(orto_img_blur)
     # edges = morphology.dilation(edges, morphology.disk(3))
     # edges = morphology.erosion(edges, morphology.disk(3))
     edges = morphology.dilation(edges, morphology.disk(1))
