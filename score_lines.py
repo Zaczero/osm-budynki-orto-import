@@ -55,7 +55,7 @@ def score_lines(edges: Sequence[tuple[tuple[float, float], tuple[float, float]]]
 
         points_along_edge = tuple(
             edge.line.interpolate(d, normalized=True).coords[0]
-            for d in np.linspace(0, 1, num=int(edge.line.length // 2)))
+            for d in np.linspace(0, 1, num=int(edge.line.length / 2)))
 
         if not points_along_edge:
             continue

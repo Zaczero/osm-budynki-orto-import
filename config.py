@@ -35,7 +35,7 @@ USER_AGENT = f'osm-budynki-orto-import/{VERSION} (+{WEBSITE})'
 CHANGESET_ID_PLACEHOLDER = f'__CHANGESET_ID_PLACEHOLDER__{secrets.token_urlsafe(8)}__'
 
 DEFAULT_CHANGESET_TAGS = {
-    'comment': 'Import budynków z ortofotomapy',
+    'comment': 'Import budynków z ewidencji',
     'created_by': CREATED_BY,
     'import': 'yes',
     'source': 'budynki.openstreetmap.org.pl',
@@ -45,7 +45,7 @@ DEFAULT_CHANGESET_TAGS = {
 DATA_DIR = Path('data')
 DATA_DIR.mkdir(exist_ok=True)
 
-IMAGES_DIR = DATA_DIR / 'images'
+IMAGES_DIR = Path('images')
 IMAGES_DIR.mkdir(exist_ok=True)
 
 DB_PATH = DATA_DIR / 'db.json'

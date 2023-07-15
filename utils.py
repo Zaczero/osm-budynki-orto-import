@@ -1,5 +1,6 @@
 import time
 from contextlib import contextmanager
+from math import cos, pi, radians
 from typing import Generator
 
 import numpy as np
@@ -49,3 +50,15 @@ def random_color() -> np.ndarray:
     color = np.random.rand(3)
     color = np.maximum(color, 0.2)
     return color
+
+
+EARTH_RADIUS = 6371000
+CIRCUMFERENCE = 2 * pi * EARTH_RADIUS
+
+
+def meters_to_lat(meters: float) -> float:
+    return meters / (CIRCUMFERENCE / 360)
+
+
+def meters_to_lon(meters: float, lat: float) -> float:
+    return meters / ((CIRCUMFERENCE / 360) * cos(radians(lat)))

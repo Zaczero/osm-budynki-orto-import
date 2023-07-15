@@ -35,8 +35,8 @@ def transform_geo_to_px(lines: Sequence[tuple[LatLon, LatLon]], box: Box, shape:
     result = []
 
     for line in lines_arr:
-        py = ((p2.lat - line[:, 0]) // y_res).astype(int)
-        px = ((line[:, 1] - p1.lon) // x_res).astype(int)
+        py = ((p2.lat - line[:, 0]) / y_res).astype(int)
+        px = ((line[:, 1] - p1.lon) / x_res).astype(int)
         result.append(tuple(zip(py, px)))
 
     return tuple(result)
