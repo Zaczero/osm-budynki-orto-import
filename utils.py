@@ -6,7 +6,7 @@ import numpy as np
 from skimage import img_as_ubyte
 from skimage.io import imsave
 
-from config import SAVE_IMG, USER_AGENT
+from config import IMAGES_DIR, SAVE_IMG, USER_AGENT
 
 
 @contextmanager
@@ -38,7 +38,7 @@ def save_image(image: np.ndarray, name: str = 'UNTITLED') -> None:
     if image.dtype in ('float32', 'float64', 'bool'):
         image = img_as_ubyte(image)
 
-    imsave(f'images/{name}.png', image, check_contrast=False)
+    imsave(IMAGES_DIR / f'{name}.png', image, check_contrast=False)
 
 
 def meters_to_lat(meters: float) -> float:

@@ -45,6 +45,9 @@ DEFAULT_CHANGESET_TAGS = {
 DATA_DIR = Path('data')
 DATA_DIR.mkdir(exist_ok=True)
 
+IMAGES_DIR = DATA_DIR / 'images'
+IMAGES_DIR.mkdir(exist_ok=True)
+
 DB_PATH = DATA_DIR / 'db.json'
 DB = TinyDB(DB_PATH)
 DB_ADDED = DB.table('added')
