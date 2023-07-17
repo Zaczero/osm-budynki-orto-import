@@ -1,7 +1,7 @@
 from typing import NamedTuple, Self
 
 from latlon import LatLon
-from utils import meters_to_lat
+from utils import meters_to_lat, meters_to_lon
 
 
 class Box(NamedTuple):
@@ -9,8 +9,9 @@ class Box(NamedTuple):
     size: LatLon
 
     def extend(self, meters: float) -> Self:
-        diff = meters_to_lat(meters)
+        extend_lat = meters_to_lat(meters)
+        extend_lon = meters_to_lon(meters, self.point.lat)
 
         return Box(
-            point=LatLon(self.point.lat - diff, self.point.lon - diff),
-            size=LatLon(self.size.lat + diff * 2, self.size.lon + diff * 2))
+            point=LatLon(self.point.lat - extend_lat, self.point.lon - extend_lon),
+            size=LatLon(self.size.lat + extend_lat * 2, self.size.lon + extend_lon * 2))
