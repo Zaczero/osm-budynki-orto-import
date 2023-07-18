@@ -32,8 +32,8 @@ def http_headers() -> dict:
     }
 
 
-def save_image(image: np.ndarray, name: str = 'UNTITLED') -> None:
-    if not SAVE_IMG:
+def save_image(image: np.ndarray, name: str = 'UNTITLED', *, force: bool = False) -> None:
+    if not SAVE_IMG and not force:
         return
 
     if image.dtype in ('float32', 'float64', 'bool'):

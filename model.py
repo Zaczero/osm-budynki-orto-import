@@ -72,7 +72,7 @@ def create_model():
     n_trials = 1000 - len(study.trials)
 
     if n_trials > 0:
-        study.optimize(_objective, n_trials=n_trials)
+        study.optimize(_objective, n_trials=n_trials, n_jobs=2)
 
     print('Number of finished trials:', len(study.trials))
     print('Best trial:', study.best_params)
@@ -113,9 +113,9 @@ def create_model():
     print(f'[✅] True Positives: {tp}')
     print()
 
-    for pred, true, identifier in sorted(zip(y_pred, y_val, X_val_id), key=lambda x: x[2].lower()):
+    for pred, proba, true, identifier in sorted(zip(y_pred, y_pred_proba, y_val, X_val_id), key=lambda x: x[3].lower()):
         if pred != true and not true:
-            print(f'FP: {identifier!r} - {true} != {pred}')
+            print(f'FP: {identifier!r} - {true} != {pred} [{proba[1]:.3f}]')
 
 
 class Model:

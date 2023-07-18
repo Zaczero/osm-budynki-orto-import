@@ -8,7 +8,10 @@ SEED = 42
 
 SAVE_IMG = os.getenv('SAVE_IMG', '0') == '1'
 DRY_RUN = os.getenv('DRY_RUN', '0') == '1'
+SKIP_CONSTRUCTION = os.getenv('SKIP_CONSTRUCTION', '1') == '1'
+
 SLEEP_AFTER_IMPORT = float(os.getenv('SLEEP_AFTER_IMPORT', '1')) * 3600
+SLEEP_AFTER_GRID_ITER = float(os.getenv('SLEEP_AFTER_GRID_ITER', '48')) * 3600
 
 if DRY_RUN:
     print('🦺 TEST MODE 🦺')

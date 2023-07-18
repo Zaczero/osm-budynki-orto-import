@@ -1,8 +1,8 @@
-import random
-from typing import Generator, Sequence
+from time import sleep
+from typing import Generator
 
 from box import Box
-from config import DB_GRID
+from config import DB_GRID, SLEEP_AFTER_GRID_ITER
 from latlon import LatLon
 
 _GRID_SIZE = 0.25
@@ -45,3 +45,7 @@ def iter_grid() -> Generator[Box, None, None]:
                 index += 1
 
         _set_last_index(-1)
+
+        if SLEEP_AFTER_GRID_ITER:
+            print(f'[SLEEP-GRID] ⏳ Sleeping for {SLEEP_AFTER_GRID_ITER} seconds...')
+            sleep(SLEEP_AFTER_GRID_ITER)

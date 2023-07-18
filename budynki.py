@@ -6,6 +6,7 @@ import xmltodict
 from tenacity import retry, stop_after_attempt, wait_exponential
 
 from box import Box
+from config import SKIP_CONSTRUCTION
 from latlon import LatLon
 from polygon import Polygon
 from utils import http_headers
@@ -57,11 +58,16 @@ def fetch_buildings(box: Box) -> Sequence[Building]:
 
         assert len(points) > 3  # first and last point are the same
 
-        result[way_id] = Building(
+        building = Building(
             polygon=Polygon(tuple(points)),
             tags={
                 tag['@k']: tag['@v']
                 for tag in way.get('tag', [])})
+
+        if SKIP_CONSTRUCTION and building.tags.get('building', None) == 'construction':
+            continue
+
+        result[way_id] = building
 
     # TODO: handle merged buildings, for now ignore them:
     # (osm change needs support too)

@@ -111,7 +111,7 @@ def score_lines(edges: Sequence[tuple[tuple[float, float], tuple[float, float]]]
         total_point_summary = [PointSummary.zero()]
 
     result = {
-        'point_rate': sum(1 for t in total_point_summary if t[0] < _DEF) / len(total_point_summary),
+        'point_rate': sum(1 for ps in total_point_summary if ps.score > 0) / len(total_point_summary),
     }
 
     for field in PointSummary._fields:

@@ -70,7 +70,7 @@ def main() -> None:
                     valid_buildings.append(building)
                 else:
                     print(f'[PROCESS][{proba:.3f}] 🚫 Invalid')
-                    mark_added((building,), reason='predict')
+                    mark_added((building,), reason='predict', predict=proba)
 
             print(f'[CELL][1/2] 🏠 Valid buildings: {len(valid_buildings)}')
 
@@ -98,7 +98,7 @@ def main() -> None:
                     print('✅ Import successful')
 
                 if SLEEP_AFTER_IMPORT:
-                    print(f'[SLEEP] ⏳ Sleeping for {SLEEP_AFTER_IMPORT} seconds...')
+                    print(f'[SLEEP-IMPORT] ⏳ Sleeping for {SLEEP_AFTER_IMPORT} seconds...')
                     sleep(SLEEP_AFTER_IMPORT)
 
 
