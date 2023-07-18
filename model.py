@@ -4,7 +4,7 @@ from statistics import mean
 import optuna
 import pandas as pd
 from lightgbm import LGBMClassifier
-from sklearn.metrics import confusion_matrix, f1_score, precision_score
+from sklearn.metrics import confusion_matrix, precision_score
 from sklearn.model_selection import StratifiedKFold, train_test_split
 
 from config import DATA_DIR, SEED
@@ -116,3 +116,23 @@ def create_model():
     for pred, true, identifier in sorted(zip(y_pred, y_val, X_val_id), key=lambda x: x[2].lower()):
         if pred != true and not true:
             print(f'FP: {identifier!r} - {true} != {pred}')
+
+
+class Model:
+    def __init__(self):
+        df = load_dataset()
+
+        X = df.drop(columns=['id', 'label'])
+        y = df['label']
+
+        with open(DATA_DIR / 'model.json') as f:
+            params = json.load(f)
+
+        self.model = LGBMClassifier(**(_default_params() | params), random_state=SEED)
+        self.model.fit(X, y)
+
+    def predict_single(self, X: dict) -> tuple[bool, float]:
+        X = pd.DataFrame([X])
+        y_pred_proba = self.model.predict_proba(X)
+        y_pred = y_pred_proba[:, 1] >= 0.8
+        return y_pred[0], y_pred_proba[0, 1]

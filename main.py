@@ -1,23 +1,17 @@
-import json
 import random
 from multiprocessing import Pool
 from time import sleep
 
 import numpy as np
-from skimage import img_as_float
-from skimage.io import imread
 
 from budynki import Building, building_chunks, fetch_buildings
 from check_on_osm import check_on_osm
-from config import CPU_COUNT, DRY_RUN, IMAGES_DIR, SEED, SLEEP_AFTER_IMPORT
-from dataset import process_dataset
+from config import CPU_COUNT, DRY_RUN, SEED, SLEEP_AFTER_IMPORT
 from db_added import filter_added, mark_added
 from db_grid import iter_grid
-from latlon import LatLon
-from model import create_model
+from model import Model
 from openstreetmap import OpenStreetMap
 from osm_change import create_buildings_change
-from polygon import Polygon
 from processor import process_polygon
 from utils import print_run_time
 
@@ -28,12 +22,15 @@ np.random.seed(SEED)
 SCORE_THRESHOLD = 0.6
 
 
-def _process_building(building: Building) -> tuple[Building, float]:
+def _process_building(building: Building) -> tuple[Building, dict | None]:
     with print_run_time('Process building'):
         return building, process_polygon(building.polygon)
 
 
 def main() -> None:
+    with print_run_time('Loading model'):
+        model = Model()
+
     with print_run_time('Logging in'):
         osm = OpenStreetMap()
         display_name = osm.get_authorized_user()['display_name']
@@ -62,13 +59,18 @@ def main() -> None:
             else:
                 iterator = pool.imap_unordered(_process_building, buildings)
 
-            for building, score in iterator:
-                if score > SCORE_THRESHOLD:
-                    print(f'[PROCESS][{score:05.3f}] 🟢 Valid')
+            for building, data in iterator:
+                if data is None:
+                    print(f'[PROCESS] 🚫 Unsupported')
+
+                is_valid, proba = model.predict_single(data)
+
+                if is_valid:
+                    print(f'[PROCESS][{proba:.3f}] ✅ Valid')
                     valid_buildings.append(building)
                 else:
-                    print(f'[PROCESS][{score:05.3f}] 🔴 Invalid')
-                    mark_added((building,), reason='score', score=score)
+                    print(f'[PROCESS][{proba:.3f}] 🚫 Invalid')
+                    mark_added((building,), reason='predict')
 
             print(f'[CELL][1/2] 🏠 Valid buildings: {len(valid_buildings)}')
 
@@ -102,5 +104,5 @@ def main() -> None:
 
 if __name__ == '__main__':
     # process_dataset()
-    create_model()
-    # main()
+    # create_model()
+    main()

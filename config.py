@@ -25,9 +25,9 @@ assert OSM_USERNAME and OSM_PASSWORD, 'OSM credentials not set'
 
 CPU_COUNT = min(int(os.getenv('CPU_COUNT', '1')), len(os.sched_getaffinity(0)))
 
-SCORER_VERSION = 1  # changing this will invalidate previous results
+SCORER_VERSION = 2  # changing this will invalidate previous results
 
-VERSION = '1.0'
+VERSION = '1.1'
 CREATED_BY = f'osm-budynki-orto-import {VERSION}'
 WEBSITE = 'https://github.com/Zaczero/osm-budynki-orto-import'
 USER_AGENT = f'osm-budynki-orto-import/{VERSION} (+{WEBSITE})'
