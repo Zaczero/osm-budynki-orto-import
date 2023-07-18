@@ -5,8 +5,11 @@ verify_ssl = true
 
 [packages]
 httpx = "*"
+lightgbm = "*"
 networkx = "*"
 numpy = "*"
+optuna = "*"
+pandas = "*"
 pyproj = "*"
 rtree = "*"
 scikit-image = "*"

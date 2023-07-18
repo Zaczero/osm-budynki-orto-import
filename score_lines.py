@@ -1,6 +1,6 @@
 from math import radians, sqrt
-from statistics import mean
-from typing import Sequence
+from operator import itemgetter
+from typing import NamedTuple, Self, Sequence
 
 import numpy as np
 from rtree import index
@@ -8,15 +8,27 @@ from shapely.geometry import LineString, Point
 
 from line import Line
 
-# line distance
-_DISTANCE_THRESHOLD = 10
+_DISTANCE_THRESHOLD = 15
+_DISTANCE_SCORE_MIN = 7
+_DISTANCE_SCORE_MAX = 11
 
-# point distance
-_DISTANCE_MIN = 7
-_DISTANCE_MAX = 11
+_ANGLE_THRESHOLD = radians(20)
+_ANGLE_SCORE_MIN = radians(15)
+_ANGLE_SCORE_MAX = radians(20)
 
-_ANGLE_MIN = radians(15)
-_ANGLE_MAX = radians(20)
+_DEF = 100
+
+
+class PointSummary(NamedTuple):
+    score: float
+    distance_score: float
+    angle_score: float
+    distance: float
+    angle: float
+
+    @classmethod
+    def zero(cls) -> Self:
+        return cls(0, 0, 0, _DEF, _DEF)
 
 
 def _perpendicular_direction(p1: tuple[float, float], p2: tuple[float, float]) -> tuple[float, float]:
@@ -38,7 +50,7 @@ def _length(line: tuple[tuple[float, float], tuple[float, float]]) -> float:
     return sqrt((line[0][0] - line[1][0]) ** 2 + (line[0][1] - line[1][1]) ** 2)
 
 
-def score_lines(edges: Sequence[tuple[tuple[float, float], tuple[float, float]]], lines: Sequence[tuple[tuple[float, float], tuple[float, float]]]) -> float:
+def score_lines(edges: Sequence[tuple[tuple[float, float], tuple[float, float]]], lines: Sequence[tuple[tuple[float, float], tuple[float, float]]]) -> dict:
     line_objs = tuple(Line(line, expand_bbox=_DISTANCE_THRESHOLD) for line in lines)
 
     idx = index.Index()
@@ -46,12 +58,12 @@ def score_lines(edges: Sequence[tuple[tuple[float, float], tuple[float, float]]]
     for i, line in enumerate(line_objs):
         idx.insert(i, line.bbox)
 
-    normalized_score = 0
-    edge_lengths = tuple(_length(edge) for edge in edges)
-    sum_edge_lengths = sum(edge_lengths)
+    edge_angles = []
+    total_point_summary = []
 
-    for i, (edge_, edge_length) in enumerate(zip(edges, edge_lengths)):
+    for i, edge_ in enumerate(edges):
         edge = Line(edge_, expand_bbox=_DISTANCE_THRESHOLD)
+        edge_angles.append(edge.angle)
 
         points_along_edge = tuple(
             edge.line.interpolate(d, normalized=True).coords[0]
@@ -64,17 +76,17 @@ def score_lines(edges: Sequence[tuple[tuple[float, float], tuple[float, float]]]
         dx *= 10
         dy *= 10
 
-        point_scores = [0] * len(points_along_edge)
+        point_summary = [PointSummary.zero()] * len(points_along_edge)
 
         for j in idx.intersection(edge.bbox):
             line = line_objs[j]
 
-            if edge.line.distance(line.line) > _DISTANCE_THRESHOLD:
+            angle_diff = abs(line.angle - edge.angle)
+            if angle_diff > _ANGLE_THRESHOLD:
                 continue
 
-            angle_diff = line.angle - edge.angle
-            angle_score = _score(abs(angle_diff), _ANGLE_MIN, _ANGLE_MAX)
-            if angle_score == 0:
+            line_distance = edge.line.distance(line.line)
+            if line_distance > _DISTANCE_THRESHOLD:
                 continue
 
             for k, p in enumerate(points_along_edge):
@@ -84,13 +96,31 @@ def score_lines(edges: Sequence[tuple[tuple[float, float], tuple[float, float]]]
 
                 if perpendicular_line.intersects(line.line):  # this is necessary to avoid warning
                     point_intersection = perpendicular_line.intersection(line.line)
+                    point_distance = Point(p[0], p[1]).distance(point_intersection)
 
-                    inter_distance = Point(p[0], p[1]).distance(point_intersection)
-                    inter_distance_score = _score(inter_distance, _DISTANCE_MIN, _DISTANCE_MAX)
+                    distance_score = _score(point_distance, _DISTANCE_SCORE_MIN, _DISTANCE_SCORE_MAX)
+                    angle_score = _score(angle_diff, _ANGLE_SCORE_MIN, _ANGLE_SCORE_MAX)
+                    score = distance_score * angle_score
 
-                    point_score = angle_score * inter_distance_score
-                    point_scores[k] = max(point_scores[k], point_score)
+                    if score < point_summary[k].score:
+                        point_summary[k] = PointSummary(score, distance_score, angle_score, point_distance, angle_diff)
 
-        normalized_score += mean(point_scores) * edge_length / sum_edge_lengths
+        total_point_summary.extend(point_summary)
 
-    return normalized_score
+    if not total_point_summary:
+        total_point_summary = [PointSummary.zero()]
+
+    result = {
+        'point_rate': sum(1 for t in total_point_summary if t[0] < _DEF) / len(total_point_summary),
+    }
+
+    for field in PointSummary._fields:
+        values = np.array(tuple(map(itemgetter(PointSummary._fields.index(field)), total_point_summary)))
+
+        result[f'point_{field}_mean'] = values.mean()
+        result[f'point_{field}_std'] = values.std()
+
+        for p in range(10, 90 + 1, 10):
+            result[f'point_{field}_{p}'] = np.percentile(values, p)
+
+    return result

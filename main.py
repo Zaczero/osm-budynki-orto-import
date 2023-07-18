@@ -1,16 +1,23 @@
+import json
 import random
 from multiprocessing import Pool
 from time import sleep
 
 import numpy as np
+from skimage import img_as_float
+from skimage.io import imread
 
 from budynki import Building, building_chunks, fetch_buildings
 from check_on_osm import check_on_osm
-from config import CPU_COUNT, DRY_RUN, SEED, SLEEP_AFTER_IMPORT
+from config import CPU_COUNT, DRY_RUN, IMAGES_DIR, SEED, SLEEP_AFTER_IMPORT
+from dataset import process_dataset
 from db_added import filter_added, mark_added
 from db_grid import iter_grid
+from latlon import LatLon
+from model import create_model
 from openstreetmap import OpenStreetMap
 from osm_change import create_buildings_change
+from polygon import Polygon
 from processor import process_polygon
 from utils import print_run_time
 
@@ -94,4 +101,6 @@ def main() -> None:
 
 
 if __name__ == '__main__':
-    main()
+    # process_dataset()
+    create_model()
+    # main()

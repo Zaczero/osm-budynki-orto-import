@@ -48,6 +48,9 @@ DATA_DIR.mkdir(exist_ok=True)
 IMAGES_DIR = Path('images')
 IMAGES_DIR.mkdir(exist_ok=True)
 
+DATASET_DIR = Path('dataset')
+DATASET_DIR.mkdir(exist_ok=True)
+
 DB_PATH = DATA_DIR / 'db.json'
 DB = TinyDB(DB_PATH)
 DB_ADDED = DB.table('added')

@@ -42,10 +42,6 @@ def save_image(image: np.ndarray, name: str = 'UNTITLED') -> None:
     imsave(IMAGES_DIR / f'{name}.png', image, check_contrast=False)
 
 
-def meters_to_lat(meters: float) -> float:
-    return meters / 111_111
-
-
 def random_color() -> np.ndarray:
     color = np.random.rand(3)
     color = np.maximum(color, 0.2)
