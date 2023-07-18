@@ -1,5 +1,6 @@
+import random
 from time import sleep
-from typing import Generator
+from typing import Generator, Sequence
 
 from box import Box
 from config import DB_GRID, SLEEP_AFTER_GRID_ITER
@@ -49,3 +50,17 @@ def iter_grid() -> Generator[Box, None, None]:
         if SLEEP_AFTER_GRID_ITER:
             print(f'[SLEEP-GRID] ⏳ Sleeping for {SLEEP_AFTER_GRID_ITER} seconds...')
             sleep(SLEEP_AFTER_GRID_ITER)
+
+
+def random_grid() -> Sequence[Box]:
+    result = []
+
+    for y in range(int(_COUNTRY_BB.size.lat / _GRID_SIZE)):
+        for x in range(int(_COUNTRY_BB.size.lon / _GRID_SIZE)):
+            result.append(Box(
+                point=_COUNTRY_BB.point + LatLon(y * _GRID_SIZE, x * _GRID_SIZE),
+                size=LatLon(_GRID_SIZE, _GRID_SIZE)))
+
+    random.shuffle(result)
+
+    return tuple(result)

@@ -9,14 +9,12 @@ from shapely.geometry import LineString, Point
 from line import Line
 
 _DISTANCE_THRESHOLD = 15
-_DISTANCE_SCORE_MIN = 7
-_DISTANCE_SCORE_MAX = 11
+_DISTANCE_SCORE_MIN = 8
+_DISTANCE_SCORE_MAX = 12
 
 _ANGLE_THRESHOLD = radians(20)
 _ANGLE_SCORE_MIN = radians(15)
 _ANGLE_SCORE_MAX = radians(20)
-
-_DEF = 100
 
 
 class PointSummary(NamedTuple):
@@ -28,7 +26,7 @@ class PointSummary(NamedTuple):
 
     @classmethod
     def zero(cls) -> Self:
-        return cls(0, 0, 0, _DEF, _DEF)
+        return cls(0, 0, 0, 100, 100)
 
 
 def _perpendicular_direction(p1: tuple[float, float], p2: tuple[float, float]) -> tuple[float, float]:
@@ -102,7 +100,7 @@ def score_lines(edges: Sequence[tuple[tuple[float, float], tuple[float, float]]]
                     angle_score = _score(angle_diff, _ANGLE_SCORE_MIN, _ANGLE_SCORE_MAX)
                     score = distance_score * angle_score
 
-                    if score < point_summary[k].score:
+                    if point_summary[k].score < score:
                         point_summary[k] = PointSummary(score, distance_score, angle_score, point_distance, angle_diff)
 
         total_point_summary.extend(point_summary)
@@ -119,6 +117,7 @@ def score_lines(edges: Sequence[tuple[tuple[float, float], tuple[float, float]]]
 
         result[f'point_{field}_mean'] = values.mean()
         result[f'point_{field}_std'] = values.std()
+        result[f'point_{field}_var'] = values.var()
 
         for p in range(10, 90 + 1, 10):
             result[f'point_{field}_{p}'] = np.percentile(values, p)

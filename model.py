@@ -7,17 +7,20 @@ from lightgbm import LGBMClassifier
 from sklearn.metrics import confusion_matrix, precision_score
 from sklearn.model_selection import StratifiedKFold, train_test_split
 
-from config import DATA_DIR, SEED
-from dataset import load_dataset
+from config import DATA_DIR, DATASET_DIR, SEED
 
 _OPTUNA_DB = f'sqlite:///{DATA_DIR}/model_optuna.db'
+
+
+def load_dataset() -> pd.DataFrame:
+    return pd.read_csv(DATASET_DIR / 'dataset.csv')
 
 
 def _default_params() -> dict:
     return {
         'objective': 'binary',
         'class_weight': 'balanced',
-        'force_col_wise': True,
+        # 'force_col_wise': True,
     }
 
 
@@ -35,13 +38,24 @@ def create_model():
 
     def _objective(trial: optuna.Trial) -> float:
         params = _default_params() | {
+            # model complexity
             'n_estimators': trial.suggest_int('n_estimators', 100, 1000),
-            'max_depth': trial.suggest_int('max_depth', 1, 10),
-            'learning_rate': trial.suggest_float('learning_rate', 0.01, 1.0),
-            'min_child_samples': trial.suggest_int('min_child_samples', 5, 100),
             'num_leaves': trial.suggest_int('num_leaves', 2, 256),
+            'max_depth': trial.suggest_int('max_depth', 1, 10),
+            'max_bin': trial.suggest_int('max_bin', 255, 500),
+
+            # learning
+            'learning_rate': trial.suggest_float('learning_rate', 0.01, 1.0),
+            'boosting_type': trial.suggest_categorical('boosting_type', ('gbdt', 'dart', 'rf')),
+            'min_child_samples': trial.suggest_int('min_child_samples', 5, 100),
+            'min_split_gain': trial.suggest_float('min_split_gain', 0.0, 1.0),
+
+            # regularization and sampling
             'subsample': trial.suggest_float('subsample', 0.5, 1.0),
             'colsample_bytree': trial.suggest_float('colsample_bytree', 0.5, 1.0),
+            'feature_fraction': trial.suggest_float('feature_fraction', 0.5, 1.0),
+            'bagging_fraction': trial.suggest_float('bagging_fraction', 0.5, 1.0),
+            'bagging_freq': trial.suggest_int('bagging_freq', 1, 10),
             'reg_alpha': trial.suggest_float('reg_alpha', 1e-8, 10.0, log=True),
             'reg_lambda': trial.suggest_float('reg_lambda', 1e-8, 10.0, log=True),
         }
@@ -69,7 +83,7 @@ def create_model():
         load_if_exists=True,
         direction='maximize')
 
-    n_trials = 1000 - len(study.trials)
+    n_trials = 500 - len(study.trials)
 
     if n_trials > 0:
         study.optimize(_objective, n_trials=n_trials, n_jobs=2)
@@ -91,12 +105,12 @@ def create_model():
         'Importance': feature_importances
     }).sort_values('Importance', ascending=False)
 
-    print('Top 10 most important features:')
-    print(feature_importances_df.head(10))
+    print('Top 20 most important features:')
+    print(feature_importances_df.head(20))
     print()
 
-    print('Top 10 least important features:')
-    print(feature_importances_df.tail(10))
+    print('Top 20 least important features:')
+    print(feature_importances_df.tail(20))
     print()
 
     y_pred_proba = model.predict_proba(X_val)

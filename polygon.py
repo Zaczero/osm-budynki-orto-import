@@ -1,3 +1,5 @@
+from base64 import urlsafe_b64encode
+from hashlib import sha256
 from typing import NamedTuple, Sequence
 
 from box import Box
@@ -32,3 +34,8 @@ class Polygon(NamedTuple):
             f'{(round(p.lat / precision) * precision):.5f},{(round(p.lon / precision) * precision):.5f}'
             for p in self.points)
         return ';'.join(sorted(rounded_points))
+
+    def unique_id_hash(self, size: int = 6) -> str:
+        result = sha256(self.unique_id().encode(), usedforsecurity=False).digest()
+        result = result[:size]
+        return urlsafe_b64encode(result).decode()
