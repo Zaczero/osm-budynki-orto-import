@@ -36,4 +36,4 @@ def fetch_orto(box: Box) -> tuple[np.ndarray]:
 
     r.raise_for_status()
 
-    return imread(r.content, as_gray=True, plugin='imageio')
+    return imread(r.content, plugin='imageio')
