@@ -1,5 +1,5 @@
 from collections import defaultdict
-from typing import Generator, NamedTuple, Sequence
+from typing import Generator, Iterable, NamedTuple, Sequence
 
 import httpx
 import xmltodict
@@ -15,6 +15,11 @@ from utils import http_headers
 class Building(NamedTuple):
     polygon: Polygon
     tags: dict[str, str]
+
+
+class ClassifiedBuilding(NamedTuple):
+    building: Building
+    score: float
 
 
 @retry(wait=wait_exponential(), stop=stop_after_attempt(5))
@@ -83,11 +88,11 @@ def fetch_buildings(box: Box) -> Sequence[Building]:
     return tuple(result.values())
 
 
-def building_chunks(data: Sequence[Building], *, size: int) -> Generator[Sequence[Building], None, None]:
+def building_chunks(buildings: Iterable[Building], *, size: int) -> Generator[Sequence[Building], None, None]:
     result = []
     result_size = 0
 
-    for building in data:
+    for building in buildings:
         building_size = len(building.polygon.points) + 1  # +1 for way
 
         if result_size + building_size > size:

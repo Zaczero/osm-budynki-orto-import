@@ -17,6 +17,7 @@ RUN mkdir /app/data
 VOLUME [ "/app/data" ]
 
 COPY LICENSE Makefile *.py ./
+COPY model ./model/
 
 RUN nix-shell --run "make version"
 

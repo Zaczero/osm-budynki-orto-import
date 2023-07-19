@@ -8,7 +8,7 @@ from skimage import img_as_float
 from skimage.io import imread
 
 from budynki import Building, fetch_buildings
-from config import CPU_COUNT, DATASET_DIR, IMAGES_DIR
+from config import CPU_COUNT, DATASET_DIR, IMAGES_DIR, MODEL_DATASET_PATH
 from db_grid import random_grid
 from latlon import LatLon
 from model import Model
@@ -121,4 +121,4 @@ def process_dataset() -> None:
             result.append(process_result)
 
     df = pd.DataFrame(result)
-    df.to_csv(DATASET_DIR / 'dataset.csv', index=False)
+    df.to_csv(MODEL_DATASET_PATH, index=False)

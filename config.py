@@ -12,7 +12,8 @@ SAVE_IMG = os.getenv('SAVE_IMG', '0') == '1'
 DRY_RUN = os.getenv('DRY_RUN', '0') == '1'
 SKIP_CONSTRUCTION = os.getenv('SKIP_CONSTRUCTION', '1') == '1'
 
-SLEEP_AFTER_IMPORT = float(os.getenv('SLEEP_AFTER_IMPORT', '1')) * 3600
+DAILY_IMPORT_SPEED = float(os.getenv('DAILY_IMPORT_SPEED', '400'))
+SLEEP_AFTER_ONE_IMPORT = 86400 / DAILY_IMPORT_SPEED if DAILY_IMPORT_SPEED > 0 else 0
 SLEEP_AFTER_GRID_ITER = float(os.getenv('SLEEP_AFTER_GRID_ITER', '48')) * 3600
 
 if DRY_RUN:
@@ -30,7 +31,7 @@ assert OSM_USERNAME and OSM_PASSWORD, 'OSM credentials not set'
 
 CPU_COUNT = min(int(os.getenv('CPU_COUNT', '1')), len(os.sched_getaffinity(0)))
 
-SCORER_VERSION = 3  # changing this will invalidate previous results
+SCORER_VERSION = 1  # changing this will invalidate previous results
 
 VERSION = '1.2'
 CREATED_BY = f'osm-budynki-orto-import {VERSION}'
@@ -55,6 +56,11 @@ IMAGES_DIR.mkdir(exist_ok=True)
 
 DATASET_DIR = Path('dataset')
 DATASET_DIR.mkdir(exist_ok=True)
+
+MODEL_DIR = Path('model')
+MODEL_DIR.mkdir(exist_ok=True)
+MODEL_DATASET_PATH = MODEL_DIR / 'dataset.csv'
+MODEL_PARAMS_PATH = MODEL_DIR / 'params.json'
 
 DB_PATH = DATA_DIR / 'db.json'
 DB = TinyDB(DB_PATH, storage=ORJSONStorage)
