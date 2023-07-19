@@ -142,11 +142,11 @@ class Model:
         with open(DATA_DIR / 'model.json') as f:
             params = json.load(f)
 
-        self.model = LGBMClassifier(**(_default_params() | params), random_state=SEED)
+        self.model = LGBMClassifier(**(_default_params() | params), random_state=SEED, verbose=-1)
         self.model.fit(X, y)
 
     def predict_single(self, X: dict) -> tuple[bool, float]:
         X = pd.DataFrame([X])
         y_pred_proba = self.model.predict_proba(X)
         y_pred = y_pred_proba[:, 1] >= 0.8
-        return y_pred[0], y_pred_proba[0, 1]
+        return y_pred[0], float(y_pred_proba[0, 1])

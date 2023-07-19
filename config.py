@@ -4,6 +4,8 @@ from pathlib import Path
 
 from tinydb import TinyDB
 
+from orjson_storage import ORJSONStorage
+
 SEED = 42
 
 SAVE_IMG = os.getenv('SAVE_IMG', '0') == '1'
@@ -55,6 +57,7 @@ DATASET_DIR = Path('dataset')
 DATASET_DIR.mkdir(exist_ok=True)
 
 DB_PATH = DATA_DIR / 'db.json'
-DB = TinyDB(DB_PATH)
+DB = TinyDB(DB_PATH, storage=ORJSONStorage)
 DB_ADDED = DB.table('added')
+DB_ADDED_INDEX = DB.table('added_index')
 DB_GRID = DB.table('grid')
