@@ -18,6 +18,7 @@ def _set_index(index: dict[str, int]) -> None:
     DB_ADDED_INDEX.upsert({'index': index}, lambda _: True)
 
 
+# TODO: check for scorer_version
 def filter_added(buildings: Iterable[Building]) -> Sequence[Building]:
     index = _get_index()
 
@@ -34,9 +35,10 @@ def mark_added(buildings: Sequence[Building], **kwargs) -> Sequence[int]:
     ids = DB_ADDED.insert_multiple({
         'timestamp': time(),
         'unique_id': unique_id,
+        'location': tuple(building.polygon.points[0]),
         'app_version': VERSION,
         'scorer_version': SCORER_VERSION,
-    } | kwargs for unique_id in unique_ids)
+    } | kwargs for building, unique_id in zip(buildings, unique_ids))
 
     index = _get_index()
 

@@ -6,9 +6,10 @@ from time import sleep
 import numpy as np
 from skimage import draw
 
-from budynki import Building, building_chunks, fetch_buildings
+from budynki import (Building, ClassifiedBuilding, building_chunks,
+                     fetch_buildings)
 from check_on_osm import check_on_osm
-from config import CPU_COUNT, DRY_RUN, SEED, SLEEP_AFTER_IMPORT
+from config import CPU_COUNT, DRY_RUN, SEED, SLEEP_AFTER_ONE_IMPORT
 from dataset import create_dataset, process_dataset
 from db_added import filter_added, mark_added
 from db_grid import iter_grid
@@ -54,10 +55,7 @@ def main() -> None:
                 print('[CELL] ⏭️ Nothing to do')
                 continue
 
-            if len(buildings) < 800:
-                continue
-
-            valid_buildings = []
+            valid_buildings: list[ClassifiedBuilding] = []
 
             if CPU_COUNT == 1:
                 iterator = map(_process_building, buildings)
@@ -69,25 +67,13 @@ def main() -> None:
                     print(f'[PROCESS] 🚫 Unsupported')
 
                 is_valid, proba = model.predict_single(data)
-                orto_box = building.polygon.get_bounding_box().extend(8)
-                orto_img = fetch_orto(orto_box)
-                polygon_lines = transform_geo_to_px(
-                    tuple(e for e in pairwise(building.polygon.points)), orto_box, orto_img.shape)
-                for line_points in polygon_lines:
-                    rr, cc = draw.line(*line_points[0], *line_points[1])
-                    orto_img[rr, cc] = np.array([1, 0, 0])
 
                 if is_valid:
                     print(f'[PROCESS][{proba:.3f}] ✅ Valid')
-                    valid_buildings.append(building)
-                    save_image(orto_img, f'good/{proba:.5f}', force=True)
+                    valid_buildings.append(ClassifiedBuilding(building, proba))
                 else:
                     print(f'[PROCESS][{proba:.3f}] 🚫 Invalid')
                     mark_added((building,), reason='predict', predict=proba)
-                    save_image(orto_img, f'bad/{proba:.5f}', force=True)
-
-            if len(valid_buildings) < 100:
-                continue
 
             print(f'[CELL][1/2] 🏠 Valid buildings: {len(valid_buildings)}')
 
@@ -96,27 +82,32 @@ def main() -> None:
                 assert len(found) + len(not_found) == len(valid_buildings)
 
             if found:
-                mark_added(found, reason='found')
+                mark_added(tuple(map(lambda cb: cb.building, found)), reason='found')
 
             print(f'[CELL][2/2] 🏠 Needing import: {len(not_found)}')
 
             if not_found:
-                for chunk in building_chunks(not_found, size=changeset_max_size):
-                    with print_run_time('Create OSM change'):
-                        osm_change = create_buildings_change(chunk)
+                for score_min, score_max, name in ((0.9, 1.1, '>90%',),
+                                                   (0.0, 0.9, '>80%',)):
+                    buildings = tuple(cb.building for cb in not_found if score_min <= cb.score < score_max)
 
-                    with print_run_time('Upload OSM change'):
-                        if DRY_RUN:
-                            print('[DRY-RUN] 🚫 Skipping upload')
-                        else:
-                            osm.upload_osm_change(osm_change)
+                    for chunk in building_chunks(buildings, size=changeset_max_size):
+                        with print_run_time('Create OSM change'):
+                            osm_change = create_buildings_change(chunk)
 
-                    mark_added(chunk, reason='upload')
-                    print('✅ Import successful')
+                        with print_run_time('Upload OSM change'):
+                            if DRY_RUN:
+                                print('[DRY-RUN] 🚫 Skipping upload')
+                            else:
+                                osm.upload_osm_change(osm_change, name)
 
-                if SLEEP_AFTER_IMPORT:
-                    print(f'[SLEEP-IMPORT] ⏳ Sleeping for {SLEEP_AFTER_IMPORT} seconds...')
-                    sleep(SLEEP_AFTER_IMPORT)
+                        mark_added(chunk, reason='upload')
+                        print(f'✅ Import successful: {name!r} ({len(chunk)})')
+
+                if SLEEP_AFTER_ONE_IMPORT:
+                    sleep_duration = len(not_found) * SLEEP_AFTER_ONE_IMPORT
+                    print(f'[SLEEP-IMPORT] ⏳ Sleeping for {sleep_duration} seconds...')
+                    sleep(sleep_duration)
 
 
 if __name__ == '__main__':

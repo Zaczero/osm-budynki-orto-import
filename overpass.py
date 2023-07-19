@@ -27,11 +27,15 @@ def _split_by_count(elements: Iterable[dict]) -> list[list[dict]]:
 
 
 def _build_buildings_query(boxes: Iterable[Box], timeout: int) -> str:
-    buffer = 0.00001
+    buffer = 0.00001  # account for possible floating point errors
     return (
         f'[out:json][timeout:{timeout}];' +
         f''.join(
             f'way["building"]({box.point.lat-buffer},{box.point.lon-buffer},{box.point.lat+box.size.lat+buffer},{box.point.lon+box.size.lon+buffer});'
+            f'out body qt;'
+            f'>;'
+            f'out skel qt;'
+            f'way["man_made"]({box.point.lat-buffer},{box.point.lon-buffer},{box.point.lat+box.size.lat+buffer},{box.point.lon+box.size.lon+buffer});'
             f'out body qt;'
             f'>;'
             f'out skel qt;'
@@ -44,11 +48,11 @@ def _build_buildings_query(boxes: Iterable[Box], timeout: int) -> str:
 def query_buildings(boxes: Sequence[Box]) -> Sequence[Sequence[Polygon]]:
     result = tuple([] for _ in boxes)
 
-    for years_ago in (None, 1, 2):
+    for years_ago in (0, 1, 2):
         timeout = 180
         query = _build_buildings_query(boxes, timeout)
 
-        if years_ago:
+        if years_ago > 0:
             date = datetime.utcnow() - timedelta(days=365 * years_ago)
             date_fmt = date.strftime('%Y-%m-%dT%H:%M:%SZ')
             query = f'[date:"{date_fmt}"]{query}'

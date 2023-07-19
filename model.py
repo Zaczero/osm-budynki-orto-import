@@ -7,13 +7,13 @@ from lightgbm import LGBMClassifier
 from sklearn.metrics import confusion_matrix, precision_score
 from sklearn.model_selection import StratifiedKFold, train_test_split
 
-from config import DATA_DIR, DATASET_DIR, SEED
+from config import DATA_DIR, MODEL_DATASET_PATH, MODEL_PARAMS_PATH, SEED
 
 _OPTUNA_DB = f'sqlite:///{DATA_DIR}/model_optuna.db'
 
 
 def load_dataset() -> pd.DataFrame:
-    return pd.read_csv(DATASET_DIR / 'dataset.csv')
+    return pd.read_csv(MODEL_DATASET_PATH)
 
 
 def _default_params() -> dict:
@@ -92,7 +92,7 @@ def create_model():
     print('Best trial:', study.best_params)
     print('Best value:', study.best_value)
 
-    with open(DATA_DIR / 'model.json', 'w') as f:
+    with open(MODEL_PARAMS_PATH, 'w') as f:
         json.dump(study.best_params, f, indent=2)
 
     model = LGBMClassifier(**(_default_params() | study.best_params), random_state=SEED)
@@ -139,7 +139,7 @@ class Model:
         X = df.drop(columns=['id', 'label'])
         y = df['label']
 
-        with open(DATA_DIR / 'model.json') as f:
+        with open(MODEL_PARAMS_PATH) as f:
             params = json.load(f)
 
         self.model = LGBMClassifier(**(_default_params() | params), random_state=SEED, verbose=-1)

@@ -31,8 +31,10 @@ class OpenStreetMap:
         return r.json()['user']
 
     @retry(wait=wait_exponential(), stop=stop_after_attempt(3))
-    def upload_osm_change(self, osm_change: str) -> None:
+    def upload_osm_change(self, osm_change: str, comment_extra: str) -> None:
         changeset = xmltodict.unparse({'osm': {'changeset': {'tag': [
+            {'@k': k, '@v': f'{v}: {comment_extra}'}
+            if k == 'comment' else
             {'@k': k, '@v': v}
             for k, v in DEFAULT_CHANGESET_TAGS.items()
         ]}}})
