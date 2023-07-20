@@ -1,4 +1,5 @@
 import random
+import traceback
 from itertools import pairwise
 from multiprocessing import Pool
 from time import sleep
@@ -27,7 +28,11 @@ np.random.seed(SEED)
 
 def _process_building(building: Building) -> tuple[Building, dict | None]:
     with print_run_time('Process building'):
-        return building, process_polygon(building.polygon)
+        try:
+            return building, process_polygon(building.polygon)
+        except:
+            traceback.print_exc()
+            return building, None
 
 
 def main() -> None:
