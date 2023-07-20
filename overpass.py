@@ -26,6 +26,7 @@ def _split_by_count(elements: Iterable[dict]) -> list[list[dict]]:
     return result
 
 
+# TODO: support lifecycle prefix tags
 def _build_buildings_query(boxes: Iterable[Box], timeout: int) -> str:
     buffer = 0.00001  # account for possible floating point errors
     return (

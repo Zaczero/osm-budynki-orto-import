@@ -1,6 +1,8 @@
+import os
 import time
 from contextlib import contextmanager
 from math import cos, pi, radians
+from pathlib import Path
 from typing import Generator
 
 import numpy as np
@@ -32,14 +34,20 @@ def http_headers() -> dict:
     }
 
 
-def save_image(image: np.ndarray, name: str = 'UNTITLED', *, force: bool = False) -> None:
+def save_image(image: np.ndarray, name: str = 'UNTITLED', *, force: bool = False) -> Path | None:
     if not SAVE_IMG and not force:
-        return
+        return None
 
     if image.dtype in ('float32', 'float64', 'bool'):
         image = img_as_ubyte(image)
 
-    imsave(IMAGES_DIR / f'{name}.png', image, check_contrast=False)
+    image_path = IMAGES_DIR / f'{name}.png'
+
+    if not image_path.parent.is_dir():
+        os.makedirs(image_path.parent, exist_ok=True)
+
+    imsave(image_path, image, check_contrast=False)
+    return image_path
 
 
 def random_color() -> np.ndarray:

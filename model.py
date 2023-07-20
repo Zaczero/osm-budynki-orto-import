@@ -145,8 +145,8 @@ class Model:
         self.model = LGBMClassifier(**(_default_params() | params), random_state=SEED, verbose=-1)
         self.model.fit(X, y)
 
-    def predict_single(self, X: dict) -> tuple[bool, float]:
+    def predict_single(self, X: dict, *, threshold: float = 0.8) -> tuple[bool, float]:
         X = pd.DataFrame([X])
         y_pred_proba = self.model.predict_proba(X)
-        y_pred = y_pred_proba[:, 1] >= 0.8
+        y_pred = y_pred_proba[:, 1] >= threshold
         return y_pred[0], float(y_pred_proba[0, 1])
