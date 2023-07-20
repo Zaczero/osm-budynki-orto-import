@@ -1,4 +1,5 @@
 import json
+import traceback
 from multiprocessing import Pool
 from typing import Iterable, NamedTuple
 
@@ -30,7 +31,11 @@ class DatasetEntry(NamedTuple):
 
 def _process_building(building: Building) -> tuple[Building, dict | None]:
     with print_run_time('Process building'):
-        return building, process_polygon(building.polygon, create_dataset=True)
+        try:
+            return building, process_polygon(building.polygon, create_dataset=True)
+        except:
+            traceback.print_exc()
+            return building, None
 
 
 def create_dataset(size: int) -> None:
