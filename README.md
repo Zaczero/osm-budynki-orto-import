@@ -22,6 +22,12 @@
 
 https://community.openstreetmap.org/t/pomysl-automatyczny-import-budynkow-porownujac-obrysy-budynki-z-orto-geoportalu/100862/
 
+### Data usage terms
+
+https://www.geoportal.gov.pl/regulamin
+
+https://wiki.openstreetmap.org/wiki/Pl:Geoportal.gov.pl
+
 ## Footer
 
 ### Contact me
