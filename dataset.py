@@ -1,6 +1,7 @@
 import json
 import traceback
 from multiprocessing import Pool
+from pathlib import Path
 from typing import Iterable, NamedTuple
 
 import numpy as np
@@ -21,12 +22,68 @@ from utils import print_run_time, save_image
 
 class DatasetEntry(NamedTuple):
     id: str
-    label: bool
+    label: int
     data: dict | list
     image: np.ndarray
 
     def get_polygon(self) -> Polygon:
         return Polygon(tuple(LatLon(*p) for p in self.data[0]))
+
+
+def _tag_to_label(tag: dict) -> int | None:
+    if tag['@source'] != 'manual':
+        print(f'[DATASET] ⚠️ Unknown source: {tag["@source"]!r}')
+        return None
+
+    if tag['@label'] in {'good'}:
+        return 1
+    elif tag['@label'] in {'bad', 'fundament'}:
+        return 0
+    elif tag['@label'] in {'unknown'}:
+        return None
+
+    raise ValueError(f'Unknown tag label: {tag["@label"]!r}')
+
+
+def _iter_dataset(*, ignore_ids: frozenset[str]) -> Iterable[DatasetEntry]:
+    cvat_annotation_paths = tuple(sorted(DATASET_DIR.rglob('annotations.xml')))
+
+    for i, p in enumerate(cvat_annotation_paths, 1):
+        dir_progress = f'{i}/{len(cvat_annotation_paths)}'
+        cvat_dir = p.parent
+        print(f'[DATASET][{dir_progress}] 📁 Iterating: {cvat_dir!r}')
+
+        cvat_annotations = xmltodict.parse(p.read_text(), force_list=('image', 'tag', 'attribute'))
+        cvat_annotations = cvat_annotations['annotations']['image']
+
+        for j, annotation in enumerate(cvat_annotations, 1):
+            file_progress = f'{j}/{len(cvat_annotations)}'
+            raw_path = cvat_dir / Path(annotation['@name'])
+            identifier = raw_path.stem
+
+            if identifier in ignore_ids:
+                continue
+
+            print(f'[DATASET][{dir_progress}][{file_progress}] 📄 Iterating: {identifier!r}')
+
+            if len(annotation['tag']) != 1:
+                print(f'[DATASET] ⚠️ Unexpected tag count {len(annotation["tag"])} for {identifier!r}')
+                continue
+
+            label = _tag_to_label(annotation['tag'][0])
+
+            if label is None:
+                continue
+
+            raw_name = raw_path.name
+            raw_name_safe = raw_name.replace('.', '_')
+            polygon_path = cvat_dir / 'images' / 'related_images' / raw_name_safe / 'polygon.json'
+
+            data = json.loads(polygon_path.read_text())
+            image = imread(raw_path)
+            image = img_as_float(image)
+
+            yield DatasetEntry(identifier, label, data, image)
 
 
 def _process_building(building: Building) -> tuple[Building, dict | None]:
@@ -119,19 +176,6 @@ def create_dataset(size: int) -> None:
         xmltodict.unparse(cvat_annotations, output=f, pretty=True)
 
 
-def _iter_dataset() -> Iterable[DatasetEntry]:
-    for label in (1, 0):
-        for p in sorted((DATASET_DIR / str(label)).glob('*.json')):
-            identifier = p.stem
-            print(f'[DATASET] 📄 Iterating: {identifier!r}')
-
-            data = json.loads(p.read_text())
-            image = imread(p.with_suffix('.png'))
-            image = img_as_float(image)
-
-            yield DatasetEntry(identifier, label, data, image)
-
-
 def _process_dataset_entry(entry: DatasetEntry) -> dict | None:
     polygon = entry.get_polygon()
     process_result = process_polygon(polygon, orto_rgb_img=entry.image)
@@ -145,13 +189,21 @@ def _process_dataset_entry(entry: DatasetEntry) -> dict | None:
 
 
 def process_dataset() -> None:
+    if MODEL_DATASET_PATH.is_file():
+        print(f'[DATASET] 💾 Loading existing dataset: {MODEL_DATASET_PATH}')
+        df = pd.read_csv(MODEL_DATASET_PATH, index_col=False)
+        processed_ids = frozenset(df['id'])
+    else:
+        df = pd.DataFrame()
+        processed_ids = frozenset()
+
     result = []
 
     with Pool(CPU_COUNT) as pool:
         if CPU_COUNT == 1:
-            iterator = map(_process_dataset_entry, _iter_dataset())
+            iterator = map(_process_dataset_entry, _iter_dataset(ignore_ids=processed_ids))
         else:
-            iterator = pool.imap_unordered(_process_dataset_entry, _iter_dataset())
+            iterator = pool.imap_unordered(_process_dataset_entry, _iter_dataset(ignore_ids=processed_ids))
 
         for process_result in iterator:
             if process_result is None:
@@ -159,5 +211,5 @@ def process_dataset() -> None:
 
             result.append(process_result)
 
-    df = pd.DataFrame(result)
+    df = pd.concat((df, pd.DataFrame(result)))
     df.to_csv(MODEL_DATASET_PATH, index=False)
