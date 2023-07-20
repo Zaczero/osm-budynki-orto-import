@@ -86,7 +86,7 @@ def create_model():
     n_trials = 500 - len(study.trials)
 
     if n_trials > 0:
-        study.optimize(_objective, n_trials=n_trials, n_jobs=2)
+        study.optimize(_objective, n_trials=n_trials, n_jobs=4)
 
     print('Number of finished trials:', len(study.trials))
     print('Best trial:', study.best_params)
