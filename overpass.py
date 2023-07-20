@@ -26,23 +26,25 @@ def _split_by_count(elements: Iterable[dict]) -> list[list[dict]]:
     return result
 
 
-# TODO: support lifecycle prefix tags
 def _build_buildings_query(boxes: Iterable[Box], timeout: int) -> str:
     buffer = 0.00001  # account for possible floating point errors
     return (
         f'[out:json][timeout:{timeout}];' +
         f''.join(
-            f'way["building"]({box.point.lat-buffer},{box.point.lon-buffer},{box.point.lat+box.size.lat+buffer},{box.point.lon+box.size.lon+buffer});'
-            f'out body qt;'
-            f'>;'
-            f'out skel qt;'
-            f'way["man_made"]({box.point.lat-buffer},{box.point.lon-buffer},{box.point.lat+box.size.lat+buffer},{box.point.lon+box.size.lon+buffer});'
+            f'way({box.point.lat-buffer},{box.point.lon-buffer},{box.point.lat+box.size.lat+buffer},{box.point.lon+box.size.lon+buffer});'
             f'out body qt;'
             f'>;'
             f'out skel qt;'
             f'out count;'
             for box in boxes)
     )
+
+
+def _is_building(element: dict) -> bool:
+    return any(
+        check in tag
+        for tag in element.get('tags', {}).keys()
+        for check in ('building', 'man_made'))
 
 
 @retry(wait=wait_exponential(), stop=stop_after_attempt(5))
@@ -65,6 +67,7 @@ def query_buildings(boxes: Sequence[Box]) -> Sequence[Sequence[Polygon]]:
 
         for i, slice in enumerate(_split_by_count(elements)):
             ways = (e for e in slice if e['type'] == 'way')
+            ways = (e for e in ways if _is_building(e))
             node_id_to_latlon = {
                 node['id']: LatLon(float(node['lat']), float(node['lon']))
                 for node in slice if node['type'] == 'node'}
