@@ -65,6 +65,7 @@ def main() -> None:
             for building, data in iterator:
                 if data is None:
                     print(f'[PROCESS] 🚫 Unsupported')
+                    continue
 
                 is_valid, proba = model.predict_single(data)
 
