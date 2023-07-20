@@ -31,7 +31,7 @@ class OpenStreetMap:
         return r.json()['user']
 
     @retry(wait=wait_exponential(), stop=stop_after_attempt(3))
-    def upload_osm_change(self, osm_change: str, comment_extra: str) -> None:
+    def upload_osm_change(self, osm_change: str, comment_extra: str) -> str:
         changeset = xmltodict.unparse({'osm': {'changeset': {'tag': [
             {'@k': k, '@v': f'{v}: {comment_extra}'}
             if k == 'comment' else
@@ -56,3 +56,5 @@ class OpenStreetMap:
 
         if not upload_resp.is_success:
             raise Exception(f'Upload failed ({upload_resp.status_code}): {upload_resp.text}')
+
+        return changeset_id
