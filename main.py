@@ -65,6 +65,7 @@ def main() -> None:
             for building, data in iterator:
                 if data is None:
                     print(f'[PROCESS] 🚫 Unsupported')
+                    mark_added((building,), reason='unsupported')
                     continue
 
                 is_valid, proba = model.predict_single(data)
@@ -99,10 +100,11 @@ def main() -> None:
                         with print_run_time('Upload OSM change'):
                             if DRY_RUN:
                                 print('[DRY-RUN] 🚫 Skipping upload')
+                                changeset_id = 0
                             else:
-                                osm.upload_osm_change(osm_change, name)
+                                changeset_id = osm.upload_osm_change(osm_change, name)
 
-                        mark_added(chunk, reason='upload')
+                        mark_added(chunk, reason='upload', changeset_id=changeset_id)
                         print(f'✅ Import successful: {name!r} ({len(chunk)})')
 
                 if SLEEP_AFTER_ONE_IMPORT:
