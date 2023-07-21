@@ -46,7 +46,6 @@ def create_model():
 
             # learning
             'learning_rate': trial.suggest_float('learning_rate', 0.01, 1.0),
-            'boosting_type': trial.suggest_categorical('boosting_type', ('gbdt', 'dart', 'rf')),
             'min_child_samples': trial.suggest_int('min_child_samples', 5, 100),
             'min_split_gain': trial.suggest_float('min_split_gain', 0.0, 1.0),
 
