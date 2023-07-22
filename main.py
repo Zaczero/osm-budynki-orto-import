@@ -119,5 +119,5 @@ def main() -> None:
 if __name__ == '__main__':
     # create_dataset(5)
     # process_dataset()
-    create_model()
-    # main()
+    # create_model()
+    main()
