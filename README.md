@@ -11,7 +11,7 @@
 
 1. Fetches building data from [BDOT10k](https://bdot10k.geoportal.gov.pl/), convieniently provided by [budynki.openstreetmap.org.pl](https://budynki.openstreetmap.org.pl/).
 2. Retrieves [ortophoto imagery](https://www.geoportal.gov.pl/dane/ortofotomapa) for each of the buildings and [preprocesses it](https://github.com/Zaczero/osm-budynki-orto-import/blob/main/processor.py).
-3. Utilizes a [fine-tuned MobileNetV3Large model](https://github.com/Zaczero/osm-budynki-orto-import/blob/main/model.py) to classify the correctness of the BDOT10k information.
+3. Utilizes a fine-tuned [MobileNetV3Large model](https://github.com/Zaczero/osm-budynki-orto-import/blob/main/model.py) to classify the correctness of the BDOT10k information.
 4. [Verifies historical OSM data](https://github.com/Zaczero/osm-budynki-orto-import/blob/main/overpass.py) to identify previously deleted buildings.
 5. Imports new buildings into OSM.
 
