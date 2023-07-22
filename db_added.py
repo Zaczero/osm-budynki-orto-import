@@ -18,13 +18,18 @@ def _set_index(index: dict[str, int]) -> None:
     DB_ADDED_INDEX.upsert({'index': index}, lambda _: True)
 
 
-# TODO: check for scorer_version
 def filter_added(buildings: Iterable[Building]) -> Sequence[Building]:
     index = _get_index()
 
     def _is_added(building: Building) -> bool:
         unique_id = building.polygon.unique_id_hash(8)
-        return unique_id in index
+        doc_id = index.get(unique_id, None)
+
+        if doc_id is None:
+            return False
+
+        doc = DB_ADDED.get(doc_id=doc_id)
+        return doc['scorer_version'] >= SCORER_VERSION
 
     return tuple(filter(lambda b: not _is_added(b), buildings))
 

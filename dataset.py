@@ -6,19 +6,15 @@ from pathlib import Path
 from typing import Iterable, NamedTuple
 
 import numpy as np
-import pandas as pd
 import xmltodict
-from scipy.ndimage import distance_transform_edt
-from skimage import img_as_float, morphology, transform
+from skimage import img_as_float
 from skimage.io import imread
 
 from budynki import Building, fetch_buildings
-from config import (CACHE_DIR, CPU_COUNT, DATASET_DIR, IMAGES_DIR,
-                    MODEL_DATASET_PATH)
+from config import CACHE_DIR, CPU_COUNT, DATASET_DIR, IMAGES_DIR
 from db_grid import random_grid
-from latlon import LatLon
-from polygon import Polygon
-from processor import ProcessResult, normalize_image, process_polygon
+from model import TunedModel
+from processor import ProcessPolygonResult, process_image, process_polygon
 from utils import print_run_time, save_image
 
 
@@ -43,33 +39,7 @@ def _tag_to_label(tag: dict) -> int | None:
     raise ValueError(f'Unknown tag label: {tag["@label"]!r}')
 
 
-def _apply_mask(image: np.ndarray, mask: np.ndarray, max_distance: float = 100) -> np.ndarray:
-    result = image
-
-    mask_bold = morphology.dilation(mask, morphology.disk(3))
-
-    # calculate the distance from each point in the mask to the nearest zero
-    # distances = distance_transform_edt(mask_bold < 0.5)
-    # normalized_distances = 1 - (distances / max_distance)
-    # normalized_distances = np.clip(normalized_distances, 0.1, 1)
-
-    # multiply the image by the distance mask
-    # result = image * normalized_distances[..., np.newaxis]
-
-    # add mask outline
-    mask_outline = mask_bold - mask
-    mask_outline = np.clip(mask_outline, 0, 1)
-    mask_outline = mask_outline[..., np.newaxis]
-    result = result * (1 - mask_outline) + mask_outline
-    # result[..., 2] = 0.5 * result[..., 2] * (1 - mask_outline) + mask_outline
-
-    # result[..., :2] = 0
-    # save_image(result, force=True)
-
-    return result
-
-
-def _iter_dataset_identifier(identifier: str, raw_path: Path, annotation: dict, *, resolution: int = 224) -> DatasetEntry | None:
+def _iter_dataset_identifier(identifier: str, raw_path: Path, annotation: dict) -> DatasetEntry | None:
     cache_path = CACHE_DIR / f'DatasetEntry_{identifier}.pkl'
     if cache_path.is_file():
         return pickle.loads(cache_path.read_bytes())
@@ -91,16 +61,11 @@ def _iter_dataset_identifier(identifier: str, raw_path: Path, annotation: dict, 
 
     image = imread(raw_path)
     image = img_as_float(image)
-    image = normalize_image(image)
 
     mask = imread(mask_path)[:, :, 0]
     mask = img_as_float(mask)
 
-    result_image = _apply_mask(image, mask)
-    result_image = transform.resize(result_image, (resolution, resolution), anti_aliasing=True)
-    result_image = result_image * 2 - 1
-
-    entry = DatasetEntry(identifier, label, result_image)
+    entry = DatasetEntry(identifier, label, process_image(image, mask))
     cache_path.write_bytes(pickle.dumps(entry, protocol=pickle.HIGHEST_PROTOCOL))
     return entry
 
@@ -134,31 +99,17 @@ def iter_dataset(*, resolution: int = 224) -> Iterable[DatasetEntry]:
             yield entry
 
 
-def _process_building(building: Building) -> tuple[Building, ProcessResult | None]:
+def _process_building(building: Building) -> tuple[Building, np.ndarray | None, ProcessPolygonResult | None]:
     with print_run_time('Process building'):
         try:
-            return building, process_polygon(building.polygon)
+            polygon_result = process_polygon(building.polygon)
+            return building, process_image(polygon_result.image, polygon_result.mask), polygon_result
         except:
             traceback.print_exc()
-            return building, None
+            return building, None, None
 
 
 def create_dataset(size: int) -> None:
-    # for p in DATASET_DIR.rglob('polygon.json'):
-    #     for pp in p.parent.glob('*.png'):
-    #         pp.unlink(missing_ok=True)
-
-    #     unique_id = p.parent.name[:-4]
-    #     polygon = Polygon(points=tuple(LatLon(*p) for p in json.loads(p.read_text())[0]))
-    #     result = process_polygon(polygon)
-
-    #     save_image(result.image, p.parent.parent.parent / unique_id, final_path=True, force=True)
-    #     save_image(result.mask, p.parent / 'mask', final_path=True, force=True)
-    #     save_image(result.overlay, p.parent / 'overlay', final_path=True, force=True)
-
-    # with print_run_time('Loading model'):
-    #     model = Model()
-
     cvat_annotations = {
         'annotations': {
             'version': '1.1',
@@ -167,6 +118,9 @@ def create_dataset(size: int) -> None:
     }
 
     cvat_image_annotations: list[dict] = cvat_annotations['annotations']['image']
+
+    with print_run_time('Loading model'):
+        model = TunedModel()
 
     with Pool(CPU_COUNT) as pool:
         for cell in random_grid():
@@ -184,37 +138,37 @@ def create_dataset(size: int) -> None:
             else:
                 iterator = pool.imap_unordered(_process_building, buildings)
 
-            for building, result in iterator:
-                if result is None:
+            for building, model_input, polygon_result in iterator:
+                if model_input is None:
                     continue
 
                 unique_id = building.polygon.unique_id_hash()
 
-                # is_valid, proba = model.predict_single(data, threshold=0.5)
-                # label = 'good' if is_valid else 'bad'
+                is_valid, proba = model.predict_single(model_input, threshold=0.5)
+                label = 'good' if is_valid else 'bad'
 
-                raw_path = save_image(result.image, f'CVAT/images/{unique_id}', force=True)
+                raw_path = save_image(polygon_result.image, f'CVAT/images/{unique_id}', force=True)
                 raw_name = raw_path.name
                 raw_name_safe = raw_name.replace('.', '_')
 
-                save_image(result.mask, f'CVAT/images/related_images/{raw_name_safe}/mask', force=True)
-                save_image(result.overlay, f'CVAT/images/related_images/{raw_name_safe}/overlay', force=True)
+                save_image(polygon_result.mask, f'CVAT/images/related_images/{raw_name_safe}/mask', force=True)
+                save_image(polygon_result.overlay, f'CVAT/images/related_images/{raw_name_safe}/overlay', force=True)
 
                 with open(IMAGES_DIR / f'CVAT/images/related_images/{raw_name_safe}/polygon.json', 'w') as f:
                     json.dump(building.polygon, f)
 
                 annotation = {
                     '@name': f'images/{raw_name}',
-                    '@height': result.image.shape[0],
-                    '@width': result.image.shape[1],
-                    # 'tag': [{
-                    #     '@label': label,
-                    #     '@source': 'auto',
-                    #     'attribute': [{
-                    #         '@name': 'proba',
-                    #         '#text': f'{proba:.3f}'
-                    #     }]
-                    # }]
+                    '@height': polygon_result.image.shape[0],
+                    '@width': polygon_result.image.shape[1],
+                    'tag': [{
+                        '@label': label,
+                        '@source': 'auto',
+                        'attribute': [{
+                            '@name': 'proba',
+                            '#text': f'{proba:.3f}'
+                        }]
+                    }]
                 }
 
                 cvat_image_annotations.append(annotation)
