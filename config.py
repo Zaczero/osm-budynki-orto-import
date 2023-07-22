@@ -46,6 +46,7 @@ DEFAULT_CHANGESET_TAGS = {
     'import': 'yes',
     'source': 'budynki.openstreetmap.org.pl',
     'website': WEBSITE,
+    'website:import': 'https://wiki.openstreetmap.org/wiki/BDOT10k_buildings_import',
 }
 
 CONFIDENCE = 0.997
