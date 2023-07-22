@@ -100,30 +100,39 @@ def create_model():
     z = image_model(image_inputs)
     z = Flatten()(z)
     z = BatchNormalization()(z)
-    z = Dropout(0.3)(z)
+    z = Dropout(0.2)(z)
     z = Dense(256, activation='relu')(z)
-    z = Dropout(0.3)(z)
+    z = Dropout(0.2)(z)
     z = Dense(128, activation='relu')(z)
+    z = Dropout(0.2)(z)
+    z = Dense(64, activation='relu')(z)
     z = Dense(1, activation='sigmoid')(z)
 
     model = Model(inputs=image_inputs, outputs=z)
-    model.compile(optimizer='adam', loss='binary_crossentropy', metrics=[Precision()])
+    model.compile(optimizer='adam', loss='binary_crossentropy', metrics=[Precision(0.8)])
 
     datagen = ImageDataGenerator(
         rotation_range=180,
-        width_shift_range=0.2,
-        height_shift_range=0.2,
-        shear_range=10,
+        width_shift_range=0.1,
+        height_shift_range=0.1,
+        shear_range=15,
         zoom_range=0.2,
-        fill_mode='nearest',
+        fill_mode='reflect',
         horizontal_flip=True,
         vertical_flip=True,
     )
 
     callbacks = [
         EarlyStopping(patience=40, verbose=1),
-        ModelCheckpoint(str(DATA_DIR / 'model.h5'), save_best_only=True, verbose=1),
-        ReduceLROnPlateau(factor=0.2, patience=15, verbose=1),
+        ReduceLROnPlateau(factor=0.5, patience=15, verbose=1),
+        ModelCheckpoint(str(DATA_DIR / 'model_loss.h5'),
+                        'val_loss', mode='min',
+                        save_best_only=True,
+                        verbose=1),
+        ModelCheckpoint(str(DATA_DIR / 'model_precision.h5'),
+                        'val_precision', mode='max',
+                        save_best_only=True,
+                        verbose=1),
         TensorBoard(str(DATA_DIR / 'tb' / datetime.now().strftime("%Y%m%d-%H%M%S")), histogram_freq=1),
     ]
 
@@ -138,7 +147,7 @@ def create_model():
 
     model: Model = load_model(str(DATA_DIR / 'model.h5'))
 
-    threshold = 0.999
+    threshold = 0.995
     print(f'Threshold: {threshold}')
 
     y_pred_proba = model.predict(X_holdout).flatten()

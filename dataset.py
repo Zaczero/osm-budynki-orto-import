@@ -43,28 +43,27 @@ def _tag_to_label(tag: dict) -> int | None:
     raise ValueError(f'Unknown tag label: {tag["@label"]!r}')
 
 
-def _apply_mask(image: np.ndarray, mask: np.ndarray, max_distance: float = 80) -> np.ndarray:
-    mask_bold = morphology.dilation(mask, morphology.disk(2))
+def _apply_mask(image: np.ndarray, mask: np.ndarray, max_distance: float = 100) -> np.ndarray:
+    result = image
+
+    mask_bold = morphology.dilation(mask, morphology.disk(3))
 
     # calculate the distance from each point in the mask to the nearest zero
-    distances = distance_transform_edt(mask_bold < 0.5)
-
-    # normalize the distances using your chosen max_distance,
-    # so that they fall into the range [0, 1]
-    normalized_distances = 1 - (distances / max_distance)
-    normalized_distances = np.clip(normalized_distances, 0.1, 1)
+    # distances = distance_transform_edt(mask_bold < 0.5)
+    # normalized_distances = 1 - (distances / max_distance)
+    # normalized_distances = np.clip(normalized_distances, 0.1, 1)
 
     # multiply the image by the distance mask
-    result = image * normalized_distances[..., np.newaxis]
+    # result = image * normalized_distances[..., np.newaxis]
 
     # add mask outline
     mask_outline = mask_bold - mask
-    mask_outline = np.clip(mask_outline, 0, 0.6)
+    mask_outline = np.clip(mask_outline, 0, 1)
     mask_outline = mask_outline[..., np.newaxis]
-    red_image = np.ones_like(image)
-    red_image[..., 1:] = 0
-    result = result * (1 - mask_outline) + red_image * mask_outline
+    result = result * (1 - mask_outline) + mask_outline
+    # result[..., 2] = 0.5 * result[..., 2] * (1 - mask_outline) + mask_outline
 
+    # result[..., :2] = 0
     # save_image(result, force=True)
 
     return result
