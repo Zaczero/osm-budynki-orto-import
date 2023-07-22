@@ -16,7 +16,7 @@ from sklearn.metrics import confusion_matrix, precision_score
 from sklearn.model_selection import train_test_split
 from sklearn.utils import class_weight
 
-from config import DATA_DIR, MODEL_DIR, SEED
+from config import DATA_DIR, MODEL_PATH, SEED
 from dataset import DatasetEntry, iter_dataset
 
 _BATCH_SIZE = 32
@@ -94,7 +94,7 @@ def create_model():
     callbacks = [
         EarlyStopping(patience=20, verbose=1),
         ReduceLROnPlateau(factor=0.5, patience=10, verbose=1),
-        ModelCheckpoint(str(MODEL_DIR / 'model.h5'), save_best_only=True, verbose=1),
+        ModelCheckpoint(str(MODEL_PATH), save_best_only=True, verbose=1),
         TensorBoard(str(DATA_DIR / 'tb' / datetime.now().strftime("%Y%m%d-%H%M%S")), histogram_freq=1),
     ]
 
@@ -107,7 +107,7 @@ def create_model():
         class_weight=class_weights,
     )
 
-    model: Model = load_model(str(MODEL_DIR / 'model.h5'))
+    model: Model = load_model(str(MODEL_PATH))
 
     threshold = 0.995
     print(f'Threshold: {threshold}')
@@ -130,14 +130,3 @@ def create_model():
     for pred, proba, true, entry in sorted(zip(y_pred, y_pred_proba, y_holdout, holdout), key=lambda x: x[3].id.lower()):
         if pred != true and not true:
             print(f'FP: {entry.id!r} - {true} != {pred} [{proba:.3f}]')
-
-
-class TunedModel:
-    def __init__(self):
-        self._model: Model = load_model(str(MODEL_DIR / 'model.h5'))
-
-    def predict_single(self, X: np.ndarray, *, threshold: float = 0.995) -> tuple[bool, float]:
-        y_pred_logit = self._model.predict([X])
-        y_pred_proba = tf.sigmoid(y_pred_logit).numpy().flatten()
-        y_pred = y_pred_proba >= threshold
-        return y_pred[0], y_pred_proba[0]

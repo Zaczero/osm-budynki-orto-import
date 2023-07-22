@@ -12,10 +12,11 @@ from config import CPU_COUNT, DRY_RUN, SEED, SLEEP_AFTER_ONE_IMPORT
 from dataset import create_dataset
 from db_added import filter_added, mark_added
 from db_grid import iter_grid
-from model import TunedModel, create_model
+from model import create_model
 from openstreetmap import OpenStreetMap
 from osm_change import create_buildings_change
 from processor import process_image, process_polygon
+from tuned_model import TunedModel
 from utils import print_run_time
 
 random.seed(SEED)
@@ -118,5 +119,5 @@ def main() -> None:
 if __name__ == '__main__':
     # create_dataset(5)
     # process_dataset()
-    # create_model()
-    main()
+    create_model()
+    # main()

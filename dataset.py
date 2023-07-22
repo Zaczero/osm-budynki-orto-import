@@ -13,8 +13,8 @@ from skimage.io import imread
 from budynki import Building, fetch_buildings
 from config import CACHE_DIR, CPU_COUNT, DATASET_DIR, IMAGES_DIR
 from db_grid import random_grid
-from model import TunedModel
 from processor import ProcessPolygonResult, process_image, process_polygon
+from tuned_model import TunedModel
 from utils import print_run_time, save_image
 
 
@@ -70,7 +70,7 @@ def _iter_dataset_identifier(identifier: str, raw_path: Path, annotation: dict) 
     return entry
 
 
-def iter_dataset(*, resolution: int = 224) -> Iterable[DatasetEntry]:
+def iter_dataset() -> Iterable[DatasetEntry]:
     cvat_annotation_paths = tuple(sorted(DATASET_DIR.rglob('annotations.xml')))
     done = set()
 
@@ -91,7 +91,7 @@ def iter_dataset(*, resolution: int = 224) -> Iterable[DatasetEntry]:
 
             print(f'[DATASET][{dir_progress}][{file_progress}] 📄 Iterating: {identifier!r}')
 
-            entry = _iter_dataset_identifier(identifier, raw_path, annotation, resolution=resolution)
+            entry = _iter_dataset_identifier(identifier, raw_path, annotation)
             if entry is None:
                 continue
 
