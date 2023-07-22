@@ -31,9 +31,9 @@ assert OSM_USERNAME and OSM_PASSWORD, 'OSM credentials not set'
 
 CPU_COUNT = min(int(os.getenv('CPU_COUNT', '1')), len(os.sched_getaffinity(0)))
 
-SCORER_VERSION = 1  # changing this will invalidate previous results
+SCORER_VERSION = 2  # changing this will invalidate previous results
 
-VERSION = '1.3'
+VERSION = '2.0'
 CREATED_BY = f'osm-budynki-orto-import {VERSION}'
 WEBSITE = 'https://github.com/Zaczero/osm-budynki-orto-import'
 USER_AGENT = f'osm-budynki-orto-import/{VERSION} (+{WEBSITE})'
@@ -51,6 +51,9 @@ DEFAULT_CHANGESET_TAGS = {
 DATA_DIR = Path('data')
 DATA_DIR.mkdir(exist_ok=True)
 
+CACHE_DIR = DATA_DIR / 'cache'
+CACHE_DIR.mkdir(exist_ok=True)
+
 IMAGES_DIR = Path('images')
 IMAGES_DIR.mkdir(exist_ok=True)
 
@@ -59,8 +62,7 @@ DATASET_DIR.mkdir(exist_ok=True)
 
 MODEL_DIR = Path('model')
 MODEL_DIR.mkdir(exist_ok=True)
-MODEL_DATASET_PATH = MODEL_DIR / 'dataset.csv'
-MODEL_PARAMS_PATH = MODEL_DIR / 'params.json'
+MODEL_PATH = MODEL_DIR / 'model.h5'
 
 DB_PATH = DATA_DIR / 'db.json'
 DB = TinyDB(DB_PATH, storage=ORJSONStorage)
