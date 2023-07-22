@@ -51,6 +51,9 @@ DEFAULT_CHANGESET_TAGS = {
 DATA_DIR = Path('data')
 DATA_DIR.mkdir(exist_ok=True)
 
+CACHE_DIR = DATA_DIR / 'cache'
+CACHE_DIR.mkdir(exist_ok=True)
+
 IMAGES_DIR = Path('images')
 IMAGES_DIR.mkdir(exist_ok=True)
 

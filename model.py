@@ -1,151 +1,180 @@
 import json
+import random
+from datetime import datetime
+from itertools import chain
+from math import ceil
 from statistics import mean
+from typing import Sequence
 
-import optuna
-import pandas as pd
-from lightgbm import LGBMClassifier
+import numpy as np
+import tensorflow as tf
+from keras.applications import MobileNetV3Large, MobileNetV3Small
+from keras.callbacks import (EarlyStopping, ModelCheckpoint, ReduceLROnPlateau,
+                             TensorBoard)
+from keras.layers import (BatchNormalization, Conv2D, Dense, Dropout, Flatten,
+                          Input, MaxPooling2D, concatenate)
+from keras.metrics import Precision
+from keras.models import Model, load_model
+from keras.preprocessing.image import ImageDataGenerator
 from sklearn.metrics import confusion_matrix, precision_score
 from sklearn.model_selection import StratifiedKFold, train_test_split
+from sklearn.utils import class_weight
 
 from config import DATA_DIR, MODEL_DATASET_PATH, MODEL_PARAMS_PATH, SEED
+from dataset import DatasetEntry, iter_dataset
+from utils import save_image
 
-_OPTUNA_DB = f'sqlite:///{DATA_DIR}/model_optuna.db'
-
-
-def load_dataset() -> pd.DataFrame:
-    return pd.read_csv(MODEL_DATASET_PATH)
+_BATCH_SIZE = 32
 
 
-def _default_params() -> dict:
-    return {
-        'objective': 'binary',
-        'class_weight': 'balanced',
-        # 'force_col_wise': True,
-    }
+# def create_datagen_flow(datagen: ImageDataGenerator, dataset: Sequence[DatasetEntry], batch_size: int = _BATCH_SIZE):
+#     indices = np.arange(len(dataset))
+
+#     while True:
+#         indices = np.random.permutation(indices)
+
+#         for start in range(0, len(indices), batch_size):
+#             batch_indices = indices[start:start+batch_size]
+
+#             batch_images = []
+#             batch_masks = []
+#             batch_labels = []
+
+#             for i in batch_indices:
+#                 entry = dataset[i]
+
+#                 # apply the same transformation to the image and the mask
+#                 seed = random.randint(0, 2**32)
+#                 transformed_image = datagen.random_transform(entry.image, seed=seed)
+#                 transformed_mask = datagen.random_transform(entry.mask, seed=seed)
+
+#                 batch_images.append(transformed_image)
+#                 batch_masks.append(transformed_mask)
+#                 batch_labels.append(entry.label)
+
+#             yield [np.stack(batch_images), np.stack(batch_masks)], np.array(batch_labels)
+
+
+def _split_x_y(dataset: Sequence[DatasetEntry]) -> tuple[np.ndarray, np.ndarray]:
+    X = np.stack(tuple(map(lambda x: x.image, dataset)))
+    y = np.array(tuple(map(lambda x: x.label, dataset)))
+    return X, y
 
 
 def create_model():
-    df = load_dataset()
+    # dataset_iterator = iter_dataset()
+    # dataset = tuple(next(dataset_iterator) for _ in range(100))
+    dataset = tuple(iter_dataset())
 
-    X = df.drop(columns='label')
-    y = df['label']
+    labels = tuple(map(lambda x: x.label, dataset))
+    class_weights = class_weight.compute_class_weight('balanced', classes=np.unique(labels), y=labels)
+    class_weights = dict(enumerate(class_weights))
 
-    X_train, X_val, y_train, y_val = train_test_split(X, y, test_size=0.2, random_state=SEED, stratify=y)
-    X_train.drop(columns='id', inplace=True)
+    train, temp = train_test_split(dataset,
+                                   test_size=0.3,
+                                   random_state=SEED,
+                                   stratify=tuple(map(lambda x: x.label, dataset)))
 
-    X_val_id = X_val['id']
-    X_val.drop(columns='id', inplace=True)
+    holdout, test = train_test_split(temp,
+                                     test_size=2/3,
+                                     random_state=SEED,
+                                     stratify=tuple(map(lambda x: x.label, temp)))
 
-    def _objective(trial: optuna.Trial) -> float:
-        params = _default_params() | {
-            # model complexity
-            'n_estimators': trial.suggest_int('n_estimators', 100, 1000),
-            'num_leaves': trial.suggest_int('num_leaves', 2, 256),
-            'max_depth': trial.suggest_int('max_depth', 1, 10),
-            'max_bin': trial.suggest_int('max_bin', 255, 500),
+    X_train, y_train = _split_x_y(train)
+    X_test, y_test = _split_x_y(test)
+    X_holdout, y_holdout = _split_x_y(holdout)
 
-            # learning
-            'learning_rate': trial.suggest_float('learning_rate', 0.01, 1.0),
-            'min_child_samples': trial.suggest_int('min_child_samples', 5, 100),
-            'min_split_gain': trial.suggest_float('min_split_gain', 0.0, 1.0),
+    # train: 70%
+    # test: 20%
+    # val: 10%
 
-            # regularization and sampling
-            'subsample': trial.suggest_float('subsample', 0.5, 1.0),
-            'colsample_bytree': trial.suggest_float('colsample_bytree', 0.5, 1.0),
-            'feature_fraction': trial.suggest_float('feature_fraction', 0.5, 1.0),
-            'bagging_fraction': trial.suggest_float('bagging_fraction', 0.5, 1.0),
-            'bagging_freq': trial.suggest_int('bagging_freq', 1, 10),
-            'reg_alpha': trial.suggest_float('reg_alpha', 1e-8, 10.0, log=True),
-            'reg_lambda': trial.suggest_float('reg_lambda', 1e-8, 10.0, log=True),
-        }
+    image_inputs = Input(dataset[0].image.shape)
+    image_model = MobileNetV3Large(include_top=False,
+                                   input_tensor=image_inputs,
+                                   include_preprocessing=False)
 
-        skf = StratifiedKFold(n_splits=5)
-        scores = []
+    freeze_ratio = 0.6
+    for layer in image_model.layers[:int(len(image_model.layers) * freeze_ratio)]:
+        layer.trainable = False
 
-        for train_index, val_index in skf.split(X_train, y_train):
-            X_train_fold, X_val_fold = X_train.iloc[train_index], X_train.iloc[val_index]
-            y_train_fold, y_val_fold = y_train.iloc[train_index], y_train.iloc[val_index]
+    z = image_model(image_inputs)
+    z = Flatten()(z)
+    z = BatchNormalization()(z)
+    z = Dropout(0.3)(z)
+    z = Dense(256, activation='relu')(z)
+    z = Dropout(0.3)(z)
+    z = Dense(128, activation='relu')(z)
+    z = Dense(1, activation='sigmoid')(z)
 
-            lgbm = LGBMClassifier(**params, random_state=SEED, verbose=-1)
-            lgbm.fit(X_train_fold, y_train_fold)
+    model = Model(inputs=image_inputs, outputs=z)
+    model.compile(optimizer='adam', loss='binary_crossentropy', metrics=[Precision()])
 
-            y_pred = lgbm.predict(X_val_fold)
-            score = precision_score(y_val_fold, y_pred)
-            scores.append(score)
+    datagen = ImageDataGenerator(
+        rotation_range=180,
+        width_shift_range=0.2,
+        height_shift_range=0.2,
+        shear_range=10,
+        zoom_range=0.2,
+        fill_mode='nearest',
+        horizontal_flip=True,
+        vertical_flip=True,
+    )
 
-        return mean(scores)
+    callbacks = [
+        EarlyStopping(patience=40, verbose=1),
+        ModelCheckpoint(str(DATA_DIR / 'model.h5'), save_best_only=True, verbose=1),
+        ReduceLROnPlateau(factor=0.2, patience=15, verbose=1),
+        TensorBoard(str(DATA_DIR / 'tb' / datetime.now().strftime("%Y%m%d-%H%M%S")), histogram_freq=1),
+    ]
 
-    study = optuna.create_study(
-        storage=_OPTUNA_DB,
-        pruner=optuna.pruners.MedianPruner(20),
-        study_name='',
-        load_if_exists=True,
-        direction='maximize')
+    model.fit(
+        datagen.flow(X_train, y_train, batch_size=_BATCH_SIZE),
+        epochs=1000,
+        steps_per_epoch=ceil(len(train) / _BATCH_SIZE),
+        validation_data=(X_test, y_test),
+        callbacks=callbacks,
+        class_weight=class_weights,
+    )
 
-    n_trials = 500 - len(study.trials)
+    model: Model = load_model(str(DATA_DIR / 'model.h5'))
 
-    if n_trials > 0:
-        study.optimize(_objective, n_trials=n_trials, n_jobs=4)
+    threshold = 0.999
+    print(f'Threshold: {threshold}')
 
-    print('Number of finished trials:', len(study.trials))
-    print('Best trial:', study.best_params)
-    print('Best value:', study.best_value)
+    y_pred_proba = model.predict(X_holdout).flatten()
+    y_pred = y_pred_proba >= threshold
 
-    with open(MODEL_PARAMS_PATH, 'w') as f:
-        json.dump(study.best_params, f, indent=2)
-
-    model = LGBMClassifier(**(_default_params() | study.best_params), random_state=SEED)
-    model.fit(X_train, y_train)
-
-    feature_importances = model.feature_importances_
-
-    feature_importances_df = pd.DataFrame({
-        'Feature': X_train.columns,
-        'Importance': feature_importances
-    }).sort_values('Importance', ascending=False)
-
-    print('Top 20 most important features:')
-    print(feature_importances_df.head(20))
-    print()
-
-    print('Top 20 least important features:')
-    print(feature_importances_df.tail(20))
-    print()
-
-    y_pred_proba = model.predict_proba(X_val)
-    y_pred = y_pred_proba[:, 1] >= 0.8
-
-    val_score = precision_score(y_val, y_pred)
+    val_score = precision_score(y_holdout, y_pred)
     print(f'Validation score: {val_score:.3f}')
     print()
 
-    tn, fp, fn, tp = confusion_matrix(y_val, y_pred).ravel()
+    tn, fp, fn, tp = confusion_matrix(y_holdout, y_pred).ravel()
     print(f'True Negatives: {tn}')
     print(f'[❗] False Positives: {fp}')
     print(f'False Negatives: {fn}')
     print(f'[✅] True Positives: {tp}')
     print()
 
-    for pred, proba, true, identifier in sorted(zip(y_pred, y_pred_proba, y_val, X_val_id), key=lambda x: x[3].lower()):
+    for pred, proba, true, entry in sorted(zip(y_pred, y_pred_proba, y_holdout, holdout), key=lambda x: x[3].id.lower()):
         if pred != true and not true:
-            print(f'FP: {identifier!r} - {true} != {pred} [{proba[1]:.3f}]')
+            print(f'FP: {entry.id!r} - {true} != {pred} [{proba:.3f}]')
 
 
-class Model:
-    def __init__(self):
-        df = load_dataset()
+# class Model:
+    # def __init__(self):
+    #     df = load_dataset()
 
-        X = df.drop(columns=['id', 'label'])
-        y = df['label']
+    #     X = df.drop(columns=['id', 'label'])
+    #     y = df['label']
 
-        with open(MODEL_PARAMS_PATH) as f:
-            params = json.load(f)
+    #     with open(MODEL_PARAMS_PATH) as f:
+    #         params = json.load(f)
 
-        self.model = LGBMClassifier(**(_default_params() | params), random_state=SEED, verbose=-1)
-        self.model.fit(X, y)
+    #     self.model = LGBMClassifier(**(_default_params() | params), random_state=SEED, verbose=-1)
+    #     self.model.fit(X, y)
 
-    def predict_single(self, X: dict, *, threshold: float = 0.8) -> tuple[bool, float]:
-        X = pd.DataFrame([X])
-        y_pred_proba = self.model.predict_proba(X)
-        y_pred = y_pred_proba[:, 1] >= threshold
-        return y_pred[0], float(y_pred_proba[0, 1])
+    # def predict_single(self, X: dict, *, threshold: float = 0.8) -> tuple[bool, float]:
+    #     X = pd.DataFrame([X])
+    #     y_pred_proba = self.model.predict_proba(X)
+    #     y_pred = y_pred_proba[:, 1] >= threshold
+    #     return y_pred[0], float(y_pred_proba[0, 1])
