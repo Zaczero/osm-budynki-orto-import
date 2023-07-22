@@ -62,6 +62,7 @@ DATASET_DIR.mkdir(exist_ok=True)
 
 MODEL_DIR = Path('model')
 MODEL_DIR.mkdir(exist_ok=True)
+MODEL_PATH = MODEL_DIR / 'model.h5'
 
 DB_PATH = DATA_DIR / 'db.json'
 DB = TinyDB(DB_PATH, storage=ORJSONStorage)
