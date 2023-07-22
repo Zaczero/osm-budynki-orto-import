@@ -1,42 +1,18 @@
 from typing import Sequence
 
-import numpy as np
-
 from box import Box
-from latlon import LatLon
+from polygon import Polygon
 
 
-def transform_px_to_geo(lines: Sequence[tuple[tuple[float, float], tuple[float, float]]], box: Box, shape: tuple[int, int]) -> Sequence[tuple[LatLon, LatLon]]:
-    p1 = box.point
-    p2 = box.point + box.size
+def transform_rad_to_px(polygon: Polygon, box: Box, shape: tuple[int, int]) -> Sequence[tuple[int, int]]:
+    y_res = box.size.lat / shape[0]
+    x_res = box.size.lon / shape[1]
 
-    x_res = (p2.lon - p1.lon) / shape[1]
-    y_res = (p2.lat - p1.lat) / shape[0]
-
-    lines_arr = np.array(lines)
     result = []
 
-    for line in lines_arr:
-        gy = p1.lat - (line[:, 1] + 0.5) * y_res
-        gx = p1.lon + (line[:, 0] + 0.5) * x_res
-        result.append((LatLon(gy[0], gx[0]), LatLon(gy[1], gx[1])))
-
-    return tuple(result)
-
-
-def transform_geo_to_px(lines: Sequence[tuple[LatLon, LatLon]], box: Box, shape: tuple[int, int]) -> Sequence[tuple[tuple[float, float], tuple[float, float]]]:
-    p1 = box.point
-    p2 = box.point + box.size
-
-    x_res = (p2.lon - p1.lon) / shape[1]
-    y_res = (p2.lat - p1.lat) / shape[0]
-
-    lines_arr = np.array(lines)
-    result = []
-
-    for line in lines_arr:
-        py = ((p2.lat - line[:, 0]) / y_res).astype(int)
-        px = ((line[:, 1] - p1.lon) / x_res).astype(int)
-        result.append(tuple(zip(py, px)))
+    for point in polygon.points:
+        y = int((box.point.lat + box.size.lat - point.lat) / y_res)
+        x = int((point.lon - box.point.lon) / x_res)
+        result.append((y, x))
 
     return tuple(result)

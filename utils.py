@@ -34,14 +34,17 @@ def http_headers() -> dict:
     }
 
 
-def save_image(image: np.ndarray, name: str = 'UNTITLED', *, force: bool = False) -> Path | None:
+def save_image(image: np.ndarray, name: str = 'UNTITLED', *, final_path: bool = False, force: bool = False) -> Path | None:
     if not SAVE_IMG and not force:
         return None
 
     if image.dtype in ('float32', 'float64', 'bool'):
         image = img_as_ubyte(image)
 
-    image_path = IMAGES_DIR / f'{name}.png'
+    if final_path:
+        image_path = Path(f'{name}.png')
+    else:
+        image_path = IMAGES_DIR / f'{name}.png'
 
     if not image_path.parent.is_dir():
         os.makedirs(image_path.parent, exist_ok=True)

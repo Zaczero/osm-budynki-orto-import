@@ -18,6 +18,7 @@ scikit-learn = "*"
 scipy = "*"
 shapely = "*"
 tenacity = "*"
+tensorflow = "*"
 tinydb = "*"
 xmltodict = "*"
 
