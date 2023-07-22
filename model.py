@@ -16,7 +16,7 @@ from sklearn.metrics import confusion_matrix, precision_score
 from sklearn.model_selection import train_test_split
 from sklearn.utils import class_weight
 
-from config import DATA_DIR, ERROR_RATE, MODEL_PATH, SEED
+from config import CONFIDENCE, DATA_DIR, MODEL_PATH, SEED
 from dataset import DatasetEntry, iter_dataset
 
 _BATCH_SIZE = 32
@@ -109,7 +109,7 @@ def create_model():
 
     model: Model = load_model(str(MODEL_PATH))
 
-    threshold = 1 - ERROR_RATE
+    threshold = CONFIDENCE
     print(f'Threshold: {threshold}')
 
     y_pred_logit = model.predict(X_holdout)
