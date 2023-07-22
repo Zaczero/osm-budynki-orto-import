@@ -48,6 +48,8 @@ DEFAULT_CHANGESET_TAGS = {
     'website': WEBSITE,
 }
 
+ERROR_RATE = 0.003
+
 DATA_DIR = Path('data')
 DATA_DIR.mkdir(exist_ok=True)
 
