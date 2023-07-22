@@ -62,8 +62,12 @@ def _iter_dataset_identifier(identifier: str, raw_path: Path, annotation: dict) 
     image = imread(raw_path)
     image = img_as_float(image)
 
-    mask = imread(mask_path)[:, :, 0]
+    mask = imread(mask_path)
     mask = img_as_float(mask)
+
+    # backwards compatibility with RGB masks
+    if len(mask.shape) == 3:
+        mask = mask[:, :, 0]
 
     entry = DatasetEntry(identifier, label, process_image(image, mask))
     cache_path.write_bytes(pickle.dumps(entry, protocol=pickle.HIGHEST_PROTOCOL))

@@ -30,4 +30,4 @@ def fetch_orto(box: Box) -> np.ndarray:
 
     r.raise_for_status()
 
-    return imread(r.content)
+    return imread(r.content, plugin='imageio')

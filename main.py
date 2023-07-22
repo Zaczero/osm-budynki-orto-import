@@ -30,7 +30,7 @@ def _process_building(building: Building) -> tuple[Building, np.ndarray | None]:
             return building, process_image(polygon_result.image, polygon_result.mask)
         except:
             traceback.print_exc()
-            return None
+            return building, None
 
 
 def main() -> None:
