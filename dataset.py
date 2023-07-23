@@ -140,7 +140,7 @@ def create_dataset(size: int) -> None:
             if CPU_COUNT == 1:
                 iterator = map(_process_building, buildings)
             else:
-                iterator = pool.imap_unordered(_process_building, buildings)
+                iterator = pool.imap_unordered(_process_building, buildings, chunksize=4)
 
             for building, model_input, polygon_result in iterator:
                 if model_input is None:
