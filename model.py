@@ -21,7 +21,7 @@ from config import CONFIDENCE, DATA_DIR, MODEL_PATH, SEED
 from dataset import DatasetEntry, iter_dataset
 
 _BATCH_SIZE = 32
-_EPOCHS = 25
+_EPOCHS = 30
 
 
 def _split_x_y(dataset: Sequence[DatasetEntry]) -> tuple[np.ndarray, np.ndarray]:
@@ -60,12 +60,12 @@ def create_model():
     steps_per_epoch = ceil(len(train) / _BATCH_SIZE)
 
     datagen = ImageDataGenerator(
-        width_shift_range=0.15,
-        height_shift_range=0.15,
+        width_shift_range=0.1,
+        height_shift_range=0.1,
         rotation_range=180,
         shear_range=20,
-        zoom_range=0.25,
-        channel_shift_range=0.1,
+        zoom_range=0.2,
+        channel_shift_range=0.05,
         fill_mode='reflect',
         horizontal_flip=True,
         vertical_flip=True,
@@ -97,7 +97,7 @@ def create_model():
         optimizer=Adam(
             CosineDecay(initial_learning_rate=1e-5,
                         decay_steps=steps_per_epoch * _EPOCHS - 5,
-                        alpha=0.3,
+                        alpha=0.2,
                         warmup_target=5e-5,
                         warmup_steps=steps_per_epoch * 5,)),
         loss=BinaryCrossentropy(),
