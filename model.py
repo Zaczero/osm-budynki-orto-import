@@ -19,8 +19,7 @@ from sklearn.metrics import (confusion_matrix, precision_recall_curve,
 from sklearn.model_selection import train_test_split
 from sklearn.utils import class_weight
 
-from config import (CONFIDENCE, DATA_DIR, MODEL_PATH, MODEL_RESOLUTION,
-                    PRECISION, SEED)
+from config import DATA_DIR, MODEL_PATH, MODEL_RESOLUTION, PRECISION, SEED
 from dataset import DatasetEntry, iter_dataset
 
 _BATCH_SIZE = 32
