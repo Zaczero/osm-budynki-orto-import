@@ -4,20 +4,21 @@ from typing import Sequence
 
 import numpy as np
 from keras.applications import MobileNetV3Large
-from keras.callbacks import (EarlyStopping, ModelCheckpoint, ReduceLROnPlateau,
-                             TensorBoard)
+from keras.callbacks import ModelCheckpoint, TensorBoard
 from keras.experimental import CosineDecay
 from keras.layers import BatchNormalization, Dense, Dropout, Flatten, Input
 from keras.losses import BinaryCrossentropy
-from keras.metrics import AUC
+from keras.metrics import (AUC, F1Score, FBetaScore, PrecisionAtRecall,
+                           RecallAtPrecision)
 from keras.models import Model
-from keras.optimizers import Adam
+from keras.optimizers import Adam, AdamW
 from keras.preprocessing.image import ImageDataGenerator
-from sklearn.metrics import confusion_matrix, precision_score, roc_auc_score
+from sklearn.metrics import (confusion_matrix, precision_recall_curve,
+                             precision_score, roc_auc_score)
 from sklearn.model_selection import train_test_split
 from sklearn.utils import class_weight
 
-from config import CONFIDENCE, DATA_DIR, MODEL_PATH, SEED
+from config import DATA_DIR, MODEL_PATH, PRECISION, SEED
 from dataset import DatasetEntry, iter_dataset
 
 _BATCH_SIZE = 32
@@ -26,7 +27,7 @@ _EPOCHS = 30
 
 def _split_x_y(dataset: Sequence[DatasetEntry]) -> tuple[np.ndarray, np.ndarray]:
     X = np.stack(tuple(map(lambda x: x.image, dataset)))
-    y = np.array(tuple(map(lambda x: x.label, dataset)))
+    y = np.array(tuple(map(lambda x: x.label, dataset)), dtype=float)
     return X, y
 
 
@@ -39,15 +40,15 @@ def create_model():
     class_weights = class_weight.compute_class_weight('balanced', classes=np.unique(labels), y=labels)
     class_weights = dict(enumerate(class_weights))
 
-    train, temp = train_test_split(dataset,
-                                   test_size=0.3,
-                                   random_state=SEED,
-                                   stratify=tuple(map(lambda x: x.label, dataset)))
+    train, holdout = train_test_split(dataset,
+                                      test_size=0.3,
+                                      random_state=SEED,
+                                      stratify=tuple(map(lambda x: x.label, dataset)))
 
-    holdout, test = train_test_split(temp,
-                                     test_size=2/3,
-                                     random_state=SEED,
-                                     stratify=tuple(map(lambda x: x.label, temp)))
+    _, test = train_test_split(holdout,
+                               test_size=2/3,
+                               random_state=SEED,
+                               stratify=tuple(map(lambda x: x.label, holdout)))
 
     X_train, y_train = _split_x_y(train)
     X_test, y_test = _split_x_y(test)
@@ -60,12 +61,12 @@ def create_model():
     steps_per_epoch = ceil(len(train) / _BATCH_SIZE)
 
     datagen = ImageDataGenerator(
-        width_shift_range=0.1,
-        height_shift_range=0.1,
+        width_shift_range=0.15,
+        height_shift_range=0.15,
         rotation_range=180,
         shear_range=20,
         zoom_range=0.2,
-        channel_shift_range=0.05,
+        channel_shift_range=0.1,
         fill_mode='reflect',
         horizontal_flip=True,
         vertical_flip=True,
@@ -101,24 +102,18 @@ def create_model():
                         warmup_target=5e-5,
                         warmup_steps=steps_per_epoch * 5,)),
         loss=BinaryCrossentropy(),
-        metrics=[AUC()]
+        metrics=[
+            AUC(),
+            RecallAtPrecision(PRECISION),
+            PrecisionAtRecall(0.8),
+            F1Score('micro', threshold=0.5),
+            FBetaScore('micro', beta=0.5, threshold=0.5),
+        ],
     )
 
     callbacks = [
-        # ReduceLROnPlateau(factor=0.5,
-        #                   min_lr=0.00001,
-        #                   cooldown=5,
-        #                   patience=10,
-        #                   min_delta=0.0005,
-        #                   verbose=1),
-
-        # EarlyStopping('val_auc', mode='max',
-        #               min_delta=0.0005,
-        #               patience=35,
-        #               verbose=1),
-
-        ModelCheckpoint(str(MODEL_PATH), 'val_auc', mode='max',
-                        initial_value_threshold=0.95,
+        ModelCheckpoint(str(MODEL_PATH), 'val_recall_at_precision', mode='max',
+                        initial_value_threshold=0.5,
                         save_best_only=True,
                         save_weights_only=True,
                         verbose=1),
@@ -137,14 +132,12 @@ def create_model():
 
     model.load_weights(str(MODEL_PATH))
 
-    threshold = CONFIDENCE
-    print(f'Threshold: {threshold}')
-
     y_pred_proba = model.predict(X_holdout).flatten()
-    y_pred = y_pred_proba >= threshold
+    precisions, _, thresholds = precision_recall_curve(y_holdout, y_pred_proba)
+    threshold_optimal = thresholds[np.searchsorted(precisions, PRECISION) - 1]
+    print(f'Threshold: {threshold_optimal}')
 
-    auc_score = roc_auc_score(y_holdout, y_pred_proba)
-    print(f'ROC AUC score: {auc_score:.3f}')
+    y_pred = y_pred_proba >= threshold_optimal
 
     val_score = precision_score(y_holdout, y_pred)
     print(f'Validation score: {val_score:.3f}')
@@ -155,6 +148,8 @@ def create_model():
     print(f'[❗] False Positives: {fp}')
     print(f'False Negatives: {fn}')
     print(f'[✅] True Positives: {tp}')
+    print()
+    print(f'Recall: {tp / (tp + fn):.3f}')
     print()
 
     for pred, proba, true, entry in sorted(zip(y_pred, y_pred_proba, y_holdout, holdout), key=lambda x: x[3].id.lower()):
