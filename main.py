@@ -8,7 +8,8 @@ import numpy as np
 from budynki import (Building, ClassifiedBuilding, building_chunks,
                      fetch_buildings)
 from check_on_osm import check_on_osm
-from config import CONFIDENCE, CPU_COUNT, DRY_RUN, SEED, SLEEP_AFTER_ONE_IMPORT
+from config import (CONFIDENCE, CPU_COUNT, DRY_RUN, PROCESS_NICE, SEED,
+                    SLEEP_AFTER_ONE_IMPORT)
 from dataset import create_dataset
 from db_added import filter_added, mark_added
 from db_grid import iter_grid
@@ -17,7 +18,7 @@ from openstreetmap import OpenStreetMap
 from osm_change import create_buildings_change
 from processor import process_image, process_polygon
 from tuned_model import TunedModel
-from utils import print_run_time
+from utils import print_run_time, set_nice
 
 random.seed(SEED)
 np.random.seed(SEED)
@@ -34,6 +35,8 @@ def _process_building(building: Building) -> tuple[Building, np.ndarray | None]:
 
 
 def main() -> None:
+    set_nice(PROCESS_NICE)
+
     with print_run_time('Logging in'):
         osm = OpenStreetMap()
         display_name = osm.get_authorized_user()['display_name']

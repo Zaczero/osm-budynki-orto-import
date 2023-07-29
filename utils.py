@@ -69,3 +69,7 @@ def meters_to_lat(meters: float) -> float:
 
 def meters_to_lon(meters: float, lat: float) -> float:
     return meters / ((CIRCUMFERENCE / 360) * cos(radians(lat)))
+
+
+def set_nice(value: int) -> None:
+    os.nice(value - os.nice(0))
