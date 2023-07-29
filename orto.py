@@ -1,5 +1,6 @@
 import httpx
 import numpy as np
+from skimage import img_as_float
 from skimage.io import imread
 from tenacity import retry, stop_after_attempt, wait_exponential
 
@@ -28,4 +29,9 @@ def fetch_orto(box: Box) -> np.ndarray:
 
     r.raise_for_status()
 
-    return imread(r.content, plugin='imageio')
+    img = imread(r.content, plugin='imageio')
+
+    if img.min() == img.max():
+        raise Exception('Ortophoto imagery is not available')
+
+    return img_as_float(img)
