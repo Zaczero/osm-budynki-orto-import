@@ -1,3 +1,4 @@
+import re
 from datetime import datetime
 from math import ceil
 from typing import Sequence
@@ -11,10 +12,10 @@ from keras.losses import BinaryCrossentropy
 from keras.metrics import (AUC, F1Score, FBetaScore, PrecisionAtRecall,
                            RecallAtPrecision)
 from keras.models import Model
-from keras.optimizers import Adam, AdamW
+from keras.optimizers import AdamW
 from keras.preprocessing.image import ImageDataGenerator
 from sklearn.metrics import (confusion_matrix, precision_recall_curve,
-                             precision_score, roc_auc_score)
+                             precision_score, recall_score)
 from sklearn.model_selection import train_test_split
 from sklearn.utils import class_weight
 
@@ -78,7 +79,7 @@ def create_model():
                                    dropout_rate=0.3,
                                    include_preprocessing=False)
 
-    freeze_ratio = 0.5
+    freeze_ratio = 0.7
     for layer in image_model.layers[:int(len(image_model.layers) * freeze_ratio)]:
         layer.trainable = False
 
@@ -150,7 +151,7 @@ def create_model():
     print(f'False Negatives: {fn}')
     print(f'[✅] True Positives: {tp}')
     print()
-    print(f'Recall: {tp / (tp + fn):.3f}')
+    print(f'Recall: {recall_score(y_holdout, y_pred):.3f}')
     print()
 
     for pred, proba, true, entry in sorted(zip(y_pred, y_pred_proba, y_holdout, holdout), key=lambda x: x[3].id.lower()):
