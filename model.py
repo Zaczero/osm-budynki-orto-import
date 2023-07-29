@@ -98,10 +98,10 @@ def create_model():
     model.compile(
         optimizer=AdamW(
             CosineDecay(initial_learning_rate=1e-5,
-                        decay_steps=steps_per_epoch * _EPOCHS - 5,
-                        alpha=0.2,
-                        warmup_target=5e-5,
-                        warmup_steps=steps_per_epoch * 5,),
+                        decay_steps=steps_per_epoch * _EPOCHS - 8,
+                        alpha=0.3,
+                        warmup_target=3e-5,
+                        warmup_steps=steps_per_epoch * 8,),
             amsgrad=True),
         loss=BinaryCrossentropy(),
         metrics=[
@@ -115,7 +115,7 @@ def create_model():
 
     callbacks = [
         ModelCheckpoint(str(MODEL_PATH), 'val_recall_at_precision', mode='max',
-                        initial_value_threshold=0.5,
+                        initial_value_threshold=0.6,
                         save_best_only=True,
                         save_weights_only=True,
                         verbose=1),
