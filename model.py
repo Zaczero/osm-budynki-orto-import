@@ -144,7 +144,6 @@ def create_model():
     y_pred_proba = model.predict(X_holdout).flatten()
     precisions, _, thresholds = precision_recall_curve(y_holdout, y_pred_proba)
     threshold_optimal = thresholds[np.searchsorted(precisions, PRECISION) - 1]
-    threshold_optimal = CONFIDENCE
     print(f'Threshold: {threshold_optimal}')
 
     y_pred = y_pred_proba >= threshold_optimal
