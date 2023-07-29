@@ -12,7 +12,6 @@ class TunedModel:
 
     def predict_single(self, X: np.ndarray, *, threshold: float = CONFIDENCE) -> tuple[bool, float]:
         with tf.device('/CPU:0'):  # force CPU to better understand real performance
-            y_pred_logit = self._model.predict(X[np.newaxis, ...])
-            y_pred_proba = tf.sigmoid(y_pred_logit).numpy().flatten()
+            y_pred_proba = self._model.predict(X[np.newaxis, ...]).flatten()
             y_pred = y_pred_proba > threshold
             return y_pred[0], float(y_pred_proba[0])

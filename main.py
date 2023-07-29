@@ -8,7 +8,7 @@ import numpy as np
 from budynki import (Building, ClassifiedBuilding, building_chunks,
                      fetch_buildings)
 from check_on_osm import check_on_osm
-from config import CPU_COUNT, DRY_RUN, SEED, SLEEP_AFTER_ONE_IMPORT
+from config import CONFIDENCE, CPU_COUNT, DRY_RUN, SEED, SLEEP_AFTER_ONE_IMPORT
 from dataset import create_dataset
 from db_added import filter_added, mark_added
 from db_grid import iter_grid
@@ -92,9 +92,17 @@ def main() -> None:
             print(f'[CELL][2/2] 🏠 Needing import: {len(not_found)}')
 
             if not_found:
-                for score_min, score_max, name in ((0.999, 1.001, '>99.9%',),
-                                                   (0.000, 0.999, '>99.5%',)):
-                    buildings = tuple(cb.building for cb in not_found if score_min <= cb.score < score_max)
+                not_found_sorted = sorted(not_found, key=lambda cb: cb.score)
+                confidence_threshold = CONFIDENCE + (1 - CONFIDENCE) / 2
+                confidence_index = next(
+                    (i for i, cb in enumerate(not_found_sorted) if cb.score > confidence_threshold),
+                    len(not_found_sorted))
+                not_found_low = not_found_sorted[:confidence_index]
+                not_found_high = not_found_sorted[confidence_index:]
+
+                for collection, name in ((not_found_high, f'b. wysoka pewność'),
+                                         (not_found_low, f'wysoka pewność')):
+                    buildings = tuple(cb.building for cb in collection)
 
                     for chunk in building_chunks(buildings, size=changeset_max_size):
                         with print_run_time('Create OSM change'):

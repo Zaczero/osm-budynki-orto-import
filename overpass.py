@@ -74,6 +74,7 @@ def query_buildings(boxes: Sequence[Box]) -> Sequence[Sequence[Polygon]]:
 
             for way in ways:
                 points = tuple(node_id_to_latlon[node_id] for node_id in way['nodes'])
-                result[i].append(Polygon(points))
+                if len(points) >= 3:  # ignore invalid polygons
+                    result[i].append(Polygon(points))
 
     return result
