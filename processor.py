@@ -4,13 +4,13 @@ import numpy as np
 from skimage import color, draw, exposure, img_as_float, morphology, transform
 
 from box import Box
+from config import MODEL_RESOLUTION
 from orto import fetch_orto
 from polygon import Polygon
 from transform_px_geo import transform_rad_to_px
 from utils import save_image
 
 _FETCH_EXTEND = 8
-_RESOLUTION = 224
 
 
 class ProcessPolygonResult(NamedTuple):
@@ -99,6 +99,6 @@ def process_image(image: np.ndarray, mask: np.ndarray) -> np.ndarray:
     # result[..., :2] = 0
     # save_image(result, force=True)
 
-    result = transform.resize(result, (_RESOLUTION, _RESOLUTION), anti_aliasing=True)
+    result = transform.resize(result, (MODEL_RESOLUTION, MODEL_RESOLUTION), anti_aliasing=True)
     result = result * 2 - 1  # MobileNet requires [-1, 1] input
     return result
