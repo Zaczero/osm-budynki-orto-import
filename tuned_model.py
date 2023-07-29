@@ -7,7 +7,7 @@ from config import CONFIDENCE, MODEL_PATH
 class TunedModel:
     def __init__(self):
         from model import get_model
-        self._model = get_model()
+        self._model = get_model(imagenet_weights=False)
         self._model.load_weights(str(MODEL_PATH))
 
     def predict_single(self, X: np.ndarray, *, threshold: float = CONFIDENCE) -> tuple[bool, float]:

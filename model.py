@@ -32,9 +32,10 @@ def _split_x_y(dataset: Sequence[DatasetEntry]) -> tuple[np.ndarray, np.ndarray]
     return X, y
 
 
-def get_model() -> Model:
+def get_model(imagenet_weights: bool = True) -> Model:
     image_inputs = Input((MODEL_RESOLUTION, MODEL_RESOLUTION, 3))
     image_model = MobileNetV3Large(include_top=False,
+                                   weights='imagenet' if imagenet_weights else None,
                                    input_tensor=image_inputs,
                                    dropout_rate=0.3,
                                    include_preprocessing=False)
