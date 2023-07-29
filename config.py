@@ -49,7 +49,7 @@ DEFAULT_CHANGESET_TAGS = {
     'website:import': 'https://wiki.openstreetmap.org/wiki/BDOT10k_buildings_import',
 }
 
-CONFIDENCE = 0.997
+CONFIDENCE = 0.99
 
 DATA_DIR = Path('data')
 DATA_DIR.mkdir(exist_ok=True)

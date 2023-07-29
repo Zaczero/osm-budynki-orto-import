@@ -20,7 +20,7 @@ from sklearn.utils import class_weight
 from config import CONFIDENCE, DATA_DIR, MODEL_PATH, SEED
 from dataset import DatasetEntry, iter_dataset
 
-_BATCH_SIZE = 24
+_BATCH_SIZE = 32
 _EPOCHS = 25
 
 
@@ -77,7 +77,7 @@ def create_model():
                                    dropout_rate=0.3,
                                    include_preprocessing=False)
 
-    freeze_ratio = 0.7
+    freeze_ratio = 0.5
     for layer in image_model.layers[:int(len(image_model.layers) * freeze_ratio)]:
         layer.trainable = False
 
@@ -126,14 +126,14 @@ def create_model():
         TensorBoard(str(DATA_DIR / 'tb' / datetime.now().strftime("%Y%m%d-%H%M%S")), histogram_freq=1),
     ]
 
-    model.fit(
-        datagen.flow(X_train, y_train, batch_size=_BATCH_SIZE),
-        epochs=_EPOCHS,
-        steps_per_epoch=steps_per_epoch,
-        validation_data=(X_test, y_test),
-        callbacks=callbacks,
-        class_weight=class_weights,
-    )
+    # model.fit(
+    #     datagen.flow(X_train, y_train, batch_size=_BATCH_SIZE),
+    #     epochs=_EPOCHS,
+    #     steps_per_epoch=steps_per_epoch,
+    #     validation_data=(X_test, y_test),
+    #     callbacks=callbacks,
+    #     class_weight=class_weights,
+    # )
 
     model.load_weights(str(MODEL_PATH))
 
