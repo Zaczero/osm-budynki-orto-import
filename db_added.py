@@ -29,7 +29,7 @@ def filter_added(buildings: Iterable[Building]) -> Sequence[Building]:
             return False
 
         doc = DB_ADDED.get(doc_id=doc_id)
-        return doc['scorer_version'] >= SCORER_VERSION
+        return doc['scorer_version'] >= SCORER_VERSION or doc['reason'] in {'found', 'upload'}
 
     return tuple(filter(lambda b: not _is_added(b), buildings))
 
