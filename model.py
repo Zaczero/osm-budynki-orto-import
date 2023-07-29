@@ -19,7 +19,8 @@ from sklearn.metrics import (confusion_matrix, precision_recall_curve,
 from sklearn.model_selection import train_test_split
 from sklearn.utils import class_weight
 
-from config import DATA_DIR, MODEL_PATH, PRECISION, SEED
+from config import (CONFIDENCE, DATA_DIR, MODEL_PATH, MODEL_RESOLUTION,
+                    PRECISION, SEED)
 from dataset import DatasetEntry, iter_dataset
 
 _BATCH_SIZE = 32
@@ -30,6 +31,33 @@ def _split_x_y(dataset: Sequence[DatasetEntry]) -> tuple[np.ndarray, np.ndarray]
     X = np.stack(tuple(map(lambda x: x.image, dataset)))
     y = np.array(tuple(map(lambda x: x.label, dataset)), dtype=float)
     return X, y
+
+
+def get_model() -> Model:
+    image_inputs = Input((MODEL_RESOLUTION, MODEL_RESOLUTION, 3))
+    image_model = MobileNetV3Large(include_top=False,
+                                   input_tensor=image_inputs,
+                                   dropout_rate=0.3,
+                                   include_preprocessing=False)
+
+    freeze_ratio = 0.7
+    for layer in image_model.layers[:int(len(image_model.layers) * freeze_ratio)]:
+        layer.trainable = False
+
+    z = image_model(image_inputs)
+    z = Flatten()(z)
+    z = Dropout(0.3)(z)
+    z = BatchNormalization()(z)
+    z = Dense(256, activation='relu')(z)
+    z = Dropout(0.3)(z)
+    z = Dense(128, activation='relu')(z)
+    z = Dropout(0.3)(z)
+    z = Dense(64, activation='relu')(z)
+    z = Dense(1, activation='sigmoid')(z)
+
+    model = Model(inputs=image_inputs, outputs=z)
+
+    return model
 
 
 def create_model():
@@ -73,28 +101,7 @@ def create_model():
         vertical_flip=True,
     )
 
-    image_inputs = Input(dataset[0].image.shape)
-    image_model = MobileNetV3Large(include_top=False,
-                                   input_tensor=image_inputs,
-                                   dropout_rate=0.3,
-                                   include_preprocessing=False)
-
-    freeze_ratio = 0.7
-    for layer in image_model.layers[:int(len(image_model.layers) * freeze_ratio)]:
-        layer.trainable = False
-
-    z = image_model(image_inputs)
-    z = Flatten()(z)
-    z = Dropout(0.3)(z)
-    z = BatchNormalization()(z)
-    z = Dense(256, activation='relu')(z)
-    z = Dropout(0.3)(z)
-    z = Dense(128, activation='relu')(z)
-    z = Dropout(0.3)(z)
-    z = Dense(64, activation='relu')(z)
-    z = Dense(1, activation='sigmoid')(z)
-
-    model = Model(inputs=image_inputs, outputs=z)
+    model = get_model()
     model.compile(
         optimizer=AdamW(
             CosineDecay(initial_learning_rate=1e-5,
@@ -137,6 +144,7 @@ def create_model():
     y_pred_proba = model.predict(X_holdout).flatten()
     precisions, _, thresholds = precision_recall_curve(y_holdout, y_pred_proba)
     threshold_optimal = thresholds[np.searchsorted(precisions, PRECISION) - 1]
+    threshold_optimal = CONFIDENCE
     print(f'Threshold: {threshold_optimal}')
 
     y_pred = y_pred_proba >= threshold_optimal

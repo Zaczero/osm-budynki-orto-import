@@ -6,8 +6,6 @@ from tenacity import retry, stop_after_attempt, wait_exponential
 from box import Box
 from utils import http_headers
 
-_RESOLUTION = 256
-
 
 @retry(wait=wait_exponential(), stop=stop_after_attempt(5))
 def fetch_orto(box: Box) -> np.ndarray:
@@ -20,8 +18,8 @@ def fetch_orto(box: Box) -> np.ndarray:
         'STYLES': 'default',
         'FORMAT': 'image/png',
         'CRS': 'EPSG:4326',
-        'WIDTH': _RESOLUTION,
-        'HEIGHT': _RESOLUTION,
+        'WIDTH': 256,
+        'HEIGHT': 256,
         'BBOX': bbox,
         'VERSION': '1.3.0',
         'SERVICE': 'WMS',
