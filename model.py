@@ -95,16 +95,17 @@ def create_model():
 
     model = Model(inputs=image_inputs, outputs=z)
     model.compile(
-        optimizer=Adam(
+        optimizer=AdamW(
             CosineDecay(initial_learning_rate=1e-5,
                         decay_steps=steps_per_epoch * _EPOCHS - 5,
                         alpha=0.2,
                         warmup_target=5e-5,
-                        warmup_steps=steps_per_epoch * 5,)),
+                        warmup_steps=steps_per_epoch * 5,),
+            amsgrad=True),
         loss=BinaryCrossentropy(),
         metrics=[
             AUC(),
-            RecallAtPrecision(PRECISION),
+            RecallAtPrecision(0.995),
             PrecisionAtRecall(0.8),
             F1Score('micro', threshold=0.5),
             FBetaScore('micro', beta=0.5, threshold=0.5),
@@ -121,14 +122,14 @@ def create_model():
         TensorBoard(str(DATA_DIR / 'tb' / datetime.now().strftime("%Y%m%d-%H%M%S")), histogram_freq=1),
     ]
 
-    # model.fit(
-    #     datagen.flow(X_train, y_train, batch_size=_BATCH_SIZE),
-    #     epochs=_EPOCHS,
-    #     steps_per_epoch=steps_per_epoch,
-    #     validation_data=(X_test, y_test),
-    #     callbacks=callbacks,
-    #     class_weight=class_weights,
-    # )
+    model.fit(
+        datagen.flow(X_train, y_train, batch_size=_BATCH_SIZE),
+        epochs=_EPOCHS,
+        steps_per_epoch=steps_per_epoch,
+        validation_data=(X_test, y_test),
+        callbacks=callbacks,
+        class_weight=class_weights,
+    )
 
     model.load_weights(str(MODEL_PATH))
 
