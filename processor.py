@@ -1,7 +1,7 @@
 from typing import NamedTuple
 
 import numpy as np
-from skimage import color, draw, exposure, img_as_float, morphology, transform
+from skimage import color, draw, exposure, morphology, transform
 
 from box import Box
 from config import MODEL_RESOLUTION
@@ -49,7 +49,7 @@ def process_polygon(polygon: Polygon, raw_img: np.ndarray | None = None) -> Proc
     image_box = polygon_box.extend(meters=_FETCH_EXTEND).squarify()
 
     if raw_img is None:
-        raw_img = img_as_float(fetch_orto(image_box))
+        raw_img = fetch_orto(image_box)
 
     orto_img = raw_img
     assert orto_img.shape[0] == orto_img.shape[1]
