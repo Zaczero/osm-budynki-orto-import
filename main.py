@@ -103,7 +103,7 @@ def main() -> None:
                 not_found_low = not_found_sorted[:confidence_index]
                 not_found_high = not_found_sorted[confidence_index:]
 
-                for collection, name in ((not_found_high, f'b. wysoka pewność'),
+                for collection, name in ((not_found_high, f'b.wysoka pewność'),
                                          (not_found_low, f'wysoka pewność')):
                     buildings = tuple(cb.building for cb in collection)
 
