@@ -42,7 +42,7 @@ USER_AGENT = f'osm-budynki-orto-import/{VERSION} (+{WEBSITE})'
 CHANGESET_ID_PLACEHOLDER = f'__CHANGESET_ID_PLACEHOLDER__{secrets.token_urlsafe(8)}__'
 
 DEFAULT_CHANGESET_TAGS = {
-    'comment': 'Import budynków z ewidencji',
+    'comment': 'Import budynków z BDOT10k',
     'created_by': CREATED_BY,
     'import': 'yes',
     'source': 'budynki.openstreetmap.org.pl',
