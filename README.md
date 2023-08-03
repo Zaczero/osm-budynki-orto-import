@@ -5,7 +5,7 @@
 [![Support my work](https://shields.monicz.dev/badge/%E2%99%A5%EF%B8%8F%20Support%20my%20work-purple)](https://monicz.dev/#support-my-work)
 [![GitHub repo stars](https://shields.monicz.dev/github/stars/Zaczero/osm-budynki-orto-import?style=social)](https://github.com/Zaczero/osm-budynki-orto-import)
 
-🧿 OpenStreetMap, AI import tool for buildings in Poland
+🏠 OpenStreetMap, AI import tool for buildings in Poland
 
 ## 💡 How it works
 
