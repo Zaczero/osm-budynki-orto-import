@@ -4,6 +4,7 @@ from multiprocessing import Pool
 from time import sleep
 
 import numpy as np
+from httpx import HTTPStatusError
 
 from budynki import (Building, ClassifiedBuilding, building_chunks,
                      fetch_buildings)
@@ -51,8 +52,15 @@ def main() -> None:
         for cell in iter_grid():
             print(f'[CELL] ⚙️ Processing {cell!r}')
 
-            with print_run_time('Fetch buildings'):
-                buildings = fetch_buildings(cell)
+            try:
+                with print_run_time('Fetch buildings'):
+                    buildings = fetch_buildings(cell)
+            except HTTPStatusError as e:
+                if e.response.status_code == 500:
+                    print('[CELL] 🚫 Corrupted data, skipping')
+                    continue
+
+                raise
 
             with print_run_time('Filter added buildings'):
                 buildings = filter_added(buildings)

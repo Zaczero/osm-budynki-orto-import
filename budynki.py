@@ -22,7 +22,7 @@ class ClassifiedBuilding(NamedTuple):
     score: float
 
 
-@retry(wait=wait_exponential(), stop=stop_after_attempt(5))
+@retry(wait=wait_exponential(), stop=stop_after_attempt(5), reraise=True)
 def fetch_buildings(box: Box) -> Sequence[Building]:
     p1 = box.point
     p2 = box.point + box.size
