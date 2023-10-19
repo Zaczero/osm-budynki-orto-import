@@ -16,12 +16,14 @@ def filter_added(buildings: Iterable[Building]) -> Sequence[Building]:
     def _is_added(building: Building) -> bool:
         unique_id = building.polygon.unique_id_hash(8)
 
-        doc = MONGO_ADDED.find({
+        cursor = MONGO_ADDED.find({
             'unique_id': unique_id,
-        }).sort({
-            'scorer_version': DESCENDING,
-            'timestamp': DESCENDING,
-        }).limit(1)
+        }).sort([
+            ('scorer_version', DESCENDING),
+            ('timestamp', DESCENDING),
+        ]).limit(1)
+
+        doc = next(cursor, None)
 
         if doc is None:
             return False
