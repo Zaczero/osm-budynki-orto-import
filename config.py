@@ -1,7 +1,9 @@
 import os
 import secrets
+from datetime import timedelta
 from pathlib import Path
 
+from pymongo import ASCENDING, IndexModel, MongoClient
 from tinydb import TinyDB
 
 from orjson_storage import ORJSONStorage
@@ -14,7 +16,7 @@ SKIP_CONSTRUCTION = os.getenv('SKIP_CONSTRUCTION', '1') == '1'
 
 DAILY_IMPORT_SPEED = float(os.getenv('DAILY_IMPORT_SPEED', '1000'))
 SLEEP_AFTER_ONE_IMPORT = 86400 / DAILY_IMPORT_SPEED if DAILY_IMPORT_SPEED > 0 else 0
-SLEEP_AFTER_GRID_ITER = float(os.getenv('SLEEP_AFTER_GRID_ITER', '48')) * 3600
+SLEEP_AFTER_GRID_ITER = timedelta(days=float(os.getenv('SLEEP_AFTER_GRID_ITER_DAYS', '30'))).total_seconds()
 PROCESS_NICE = int(os.getenv('PROCESS_NICE', '15'))
 
 if DRY_RUN:
@@ -34,7 +36,7 @@ CPU_COUNT = min(int(os.getenv('CPU_COUNT', '1')), len(os.sched_getaffinity(0)))
 
 SCORER_VERSION = 3  # changing this will invalidate previous results
 
-VERSION = '2.1'
+VERSION = '2.2'
 CREATED_BY = f'osm-budynki-orto-import {VERSION}'
 WEBSITE = 'https://github.com/Zaczero/osm-budynki-orto-import'
 USER_AGENT = f'osm-budynki-orto-import/{VERSION} (+{WEBSITE})'
@@ -72,6 +74,13 @@ MODEL_PATH = MODEL_DIR / 'model.h5'
 
 DB_PATH = DATA_DIR / 'db.json'
 DB = TinyDB(DB_PATH, storage=ORJSONStorage)
-DB_ADDED = DB.table('added')
-DB_ADDED_INDEX = DB.table('added_index')
 DB_GRID = DB.table('grid')
+
+MONGO_URL = os.getenv('MONGO_URL', 'mongodb://localhost:27017')
+MONGO = MongoClient(MONGO_URL)
+MONGO_DB = MONGO['default']
+MONGO_ADDED = MONGO_DB['added']
+
+MONGO_ADDED.create_indexes([
+    IndexModel([('unique_id', ASCENDING)])
+])
