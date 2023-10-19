@@ -28,7 +28,7 @@ with pkgs; let
   };
 in
 dockerTools.buildLayeredImage {
-  name = "docker.monicz.pl/osm-budynki-orto-import";
+  name = "docker.monicz.dev/osm-budynki-orto-import";
   tag = "latest";
   maxLayers = 10;
 
