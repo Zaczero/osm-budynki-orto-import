@@ -1,25 +1,24 @@
-{ pkgs ? import <nixpkgs> { } }:
+{ pkgs ? import <nixpkgs> { }, ... }:
 
-with pkgs; let
+let
   shell = import ./shell.nix {
-    inherit pkgs;
-    isDocker = true;
+    isDevelopment = false;
   };
 
-  python-venv = buildEnv {
+  python-venv = pkgs.buildEnv {
     name = "python-venv";
     paths = [
-      (runCommand "python-venv" { } ''
+      (pkgs.runCommand "python-venv" { } ''
         mkdir -p $out/lib
         cp -r "${./.venv/lib/python3.11/site-packages}"/* $out/lib
       '')
     ];
   };
 
-  etc-hosts = buildEnv {
+  etc-hosts = pkgs.buildEnv {
     name = "etc-hosts";
     paths = [
-      (writeTextDir "etc/hosts" ''
+      (pkgs.writeTextDir "etc/hosts" ''
         127.0.0.1 localhost
         ::1 localhost
       '')
@@ -27,7 +26,7 @@ with pkgs; let
     pathsToLink = [ "/etc" ];
   };
 in
-dockerTools.buildLayeredImage {
+with pkgs; dockerTools.buildLayeredImage {
   name = "docker.monicz.dev/osm-budynki-orto-import";
   tag = "latest";
   maxLayers = 10;
@@ -37,10 +36,9 @@ dockerTools.buildLayeredImage {
   extraCommands = ''
     set -e
     mkdir app && cd app
-    cp "${./.}"/LICENSE .
-    cp "${./.}"/Makefile .
     cp "${./.}"/*.py .
     cp -r "${./.}"/model .
+    export PATH="${lib.makeBinPath shell.buildInputs}:$PATH"
     ${shell.shellHook}
   '';
 
